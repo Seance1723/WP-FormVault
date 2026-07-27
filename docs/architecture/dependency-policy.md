@@ -158,6 +158,8 @@ Observed on 2026-07-27:
 
 The verified lock-only build on 2026-07-27 passed strict manifest/lock validation, security audit, platform checks, Strauss generation, count-locked homonym corrections, Action Scheduler staging, notices, syntax checks for 722 generated PHP files, namespace-conflict checks, Complex/Matrix runtime checks, and real XLSX/ZIP generation.
 
+The fully clean Windows Docker Desktop bind-mount run measured 305.9 seconds during `FND-003`. Build/CI callers must allow at least 420 seconds for this workflow. A caller timeout does not guarantee the `--rm` child container stopped; inspect the project-scoped container before retrying so two dependency generations do not overlap (`BUG-0013`).
+
 ## Selected compatibility profile
 
 The user selected option A on 2026-07-27:

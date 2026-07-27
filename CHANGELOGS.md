@@ -37,6 +37,9 @@ All material project changes are recorded here. This file follows the spirit of 
 - Added deterministic runtime dependency/license notices and syntax verification for every generated prefixed and Action Scheduler PHP file. (`FND-002`)
 - Added the service-container composition contract, fail-closed startup phases, service scope rules, public cross-module surfaces, and ownership boundaries for all 15 modules. (`ARCH-004`)
 - Added a machine-readable 15-module dependency graph and PHP architecture verifier that enforces 63 inward edges, terminal transport modules, declared module directories, public cross-module imports, and composition-root-only container access. (`ARCH-004`)
+- Added the explicit request/site-scoped service container with immutable values, lazy shared services, transient factories, aliases, runtime type enforcement, circular/missing/duplicate checks, and irreversible definition freeze. (`FND-003`)
+- Added packaged dependency loading, platform compatibility and pending-schema gates, sanitized administrator diagnostics, and the idempotent `Core\Plugin` composition root. (`FND-003`)
+- Added deterministic bootstrap verification covering dependency and gate order, safe failure states, container negative paths, hook idempotency, injected substitutes, and independent multisite graphs. (`FND-003`)
 
 ### Changed
 
@@ -49,6 +52,7 @@ All material project changes are recorded here. This file follows the spirit of 
 - Raised the required WordPress version from 6.2 to 6.5 and selected Action Scheduler 3.9.3 after explicit user approval, resolving the dependency compatibility conflict. (`ARCH-002`, `ARCH-003`, `BUG-0005`)
 - Replaced reliance on the incomplete shared PHP environment with a repository-owned, digest-pinned dependency build and completed the first audited PHP 8.1 lock. (`FND-002`, `BUG-0004`)
 - Established `WPFormVault\Core\Plugin` as the sole composition root and `WPFormVault\Core\ServiceContainer` as the explicit, frozen, request/site-scoped container contract required by `FND-003`. (`ARCH-004`)
+- Advanced the plugin entry boundary to load packaged dependencies and run the base composition root; production startup intentionally stops at `blocked_schema` until the migration task replaces `PendingSchemaGate`. (`FND-003`)
 
 ### Deprecated
 
@@ -71,12 +75,15 @@ All material project changes are recorded here. This file follows the spirit of 
 - Corrected the provisional PhpSpreadsheet baseline to 5.8.1, the final upstream line supporting PHP 8.1. (`BUG-0007`)
 - Corrected the Action Scheduler manifest constraint so strict Composer validation passes while the lock preserves exact version 3.9.3 and excludes 4.x. (`BUG-0008`)
 - Decoupled the compatibility verifier from mutable policy lifecycle wording while retaining enforcement of the selected platform and dependency boundaries. (`ARCH-002`, `BUG-0011`)
+- Corrected the WordPress `add_action()` test stubs to accept deferred callback strings, matching WordPress behavior and allowing Action Scheduler's early version-registration callback to load. (`BUG-0012`)
+- Corrected the final dependency-build verification window after measuring a 305.9-second clean Windows bind-mount run; documented a 420-second minimum and project-container inspection after interruption. (`BUG-0013`)
 
 ### Security
 
 - Added direct-access guards to runtime PHP files.
 - Restricted autoloading to validated `WPFormVault` namespace segments so class names cannot construct traversal paths. (`FND-001`)
 - Required build-time namespace isolation for generic Composer packages, explicit Composer plugin allow-listing, locked/audited dependencies, conflict testing, and no runtime dependency downloads. (`ARCH-003`)
+- Added fail-closed dependency/platform/schema ordering, sanitized boot diagnostics with no internal exception/path disclosure, and prevention of product construction before every gate passes. (`FND-003`)
 
 ## Release history
 

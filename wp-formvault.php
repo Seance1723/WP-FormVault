@@ -52,3 +52,4 @@ if ( ! defined( 'WPFV_PLUGIN_URL' ) ) {
 require_once WPFV_PLUGIN_DIR . 'includes/Autoloader.php';
 
 \WPFormVault\Autoloader::register();
+\WPFormVault\Core\Plugin::boot();

@@ -45,6 +45,147 @@ This is the mandatory record for defects found during development, testing, depl
 
 Records are ordered by discovery recency. The `State` field is authoritative.
 
+### BUG-0013 — Clean dependency verification exceeded the command time limit
+
+- **State:** CLOSED
+- **Severity:** S3 Low
+- **First seen:** 2026-07-27 14:41:01 UTC
+- **Last seen:** 2026-07-27 14:50:45 UTC
+- **Environment:** Windows Docker Desktop / repository-owned PHP 8.1.34 dependency image / bind-mounted workspace
+- **Affected version/commit:** unreleased working tree
+- **Affected modules/tasks:** FND-003, FND-002
+- **Reporter/owner:** Codex
+
+#### Observed behavior
+
+The normal lock-only `tools/run-dependency-build.ps1` verification exceeded the tool's 120-second limit and returned exit code 124 without its final result. The Docker container remained active in the Strauss `composer run build-dependencies` copy phase after the calling command timed out.
+
+#### Expected behavior
+
+The reproducible dependency build must complete with a captured success/failure result inside the allowed verification window, or the caller must use a documented sufficient timeout and recover/observe the detached child safely.
+
+#### Reproduction steps
+
+1. Run `powershell -NoProfile -ExecutionPolicy Bypass -File tools\run-dependency-build.ps1` with a 120-second caller limit.
+2. Observe exit code 124 at approximately 124 seconds.
+3. Run `docker ps` and observe the `wp-formvault-dependency-build` container still executing `composer run build-dependencies`.
+4. Read its logs and observe Strauss in file enumeration/copying rather than a recorded failure.
+
+#### Evidence
+
+- Timed command result: `command timed out after 124071 milliseconds`.
+- Active container command: `docker-php-entrypoint composer run build-dependencies`.
+- Latest logs: Strauss reached `Scanning files`, `Determining changes`, and `Copying files`.
+- Frequency: deterministic with the original 120-second caller limit; the captured clean rerun completed successfully in 305.9 seconds.
+
+#### Impact and scope
+
+No product runtime or user data is affected. Final FND-003 completion evidence is withheld because the dependency build result was not captured. A lingering build container/process may consume local resources until it finishes or is safely cleaned up.
+
+#### Cause analysis
+
+- **Proximate cause:** The external command limit expired while Strauss was copying the generated dependency tree through the Windows bind mount.
+- **Root cause:** The verification caller used a 120-second limit without a measured clean-build duration; the actual clean run required 305.9 seconds.
+- **Contributing factors:** Namespace generation processes hundreds of dependency files on a Docker Desktop bind mount.
+- **Why existing controls missed it:** Earlier successful runs did not establish/document a bounded worst-case duration for a fully clean dependency regeneration.
+
+#### Resolution
+
+- **Fix:** Observed the first project container until its automatic `--rm` exit, confirmed no active project build container remained, reran the exact normal lock-only command with a 420-second bound, and documented that bound plus interrupted-container inspection.
+- **Data repair:** Not required.
+- **Backward compatibility:** Build/verification behavior only.
+
+#### Recurrence prevention
+
+- New invariant/guard: final dependency verification uses a timeout that covers measured clean-generation duration and checks for leftover project build containers after caller interruption.
+- Regression test: normal lock-only dependency build plus the FND-003 bootstrap suite against the regenerated tree.
+- Broader related tests: architecture, compatibility, foundation, task graph, PHP syntax, and diff checks.
+- Documentation/task/memory updates: README, dependency policy, task evidence, changelog, bug register, and project memory updated.
+- Monitoring/alert: a timed-out caller must inspect project-scoped container state instead of assuming the build failed or stopped.
+
+#### Verification
+
+- Command/check: `powershell -NoProfile -ExecutionPolicy Bypass -File tools\run-dependency-build.ps1` with a 420-second caller limit; project-scoped `docker ps` inspection; full PHP/bootstrap/architecture/compatibility/foundation/task-graph/diff suite.
+- Result: clean lock-only build exited 0 in 305.9 seconds; validation, audit, platform requirements, Strauss generation/corrections, Action Scheduler staging, notices, 722 generated PHP syntax checks, namespace/conflict/type tests, and real XLSX/ZIP smoke passed. No project build container remained; all adjacent final gates passed.
+- Verified by/date: Codex, 2026-07-27 14:50:45 UTC.
+
+#### Timeline
+
+- `2026-07-27 14:41:01 UTC` — Caller timed out; active Strauss build container and progress logs confirmed; FND-003 reopened.
+- `2026-07-27 14:44:34 UTC` — First `--rm` container reached a terminal state after progressing through generation/lint; no concurrent retry was started.
+- `2026-07-27 14:49:40 UTC` — Exact bounded rerun exited 0 after 305.9 seconds with every dependency gate passing.
+- `2026-07-27 14:50:45 UTC` — Adjacent final verification and documentation synchronization passed; defect closed.
+
+### BUG-0012 — Bootstrap stopped before the expected pending-schema gate
+
+- **State:** CLOSED
+- **Severity:** S3 Low
+- **First seen:** 2026-07-27 14:29:27 UTC
+- **Last seen:** 2026-07-27 14:37:48 UTC
+- **Environment:** repository-owned PHP 8.1.34 / generated locked runtime dependencies
+- **Affected version/commit:** unreleased working tree
+- **Affected modules/tasks:** FND-003
+- **Reporter/owner:** Codex
+
+#### Observed behavior
+
+The new deterministic bootstrap verifier loaded the real plugin bootstrap but the production composition root did not reach the expected `blocked_schema` state.
+
+#### Expected behavior
+
+With the reviewed dependency tree, PHP 8.1 runtime, WordPress 6.5 test context, and the intentionally pending schema implementation, dependency and compatibility gates must pass and bootstrap must stop specifically at the schema gate.
+
+#### Reproduction steps
+
+1. Generate/install the locked `vendor-prefixed/` and `libraries/action-scheduler/` trees.
+2. Run `php tools/verify-bootstrap.php` in the repository-owned PHP 8.1 image.
+3. Observe `Bootstrap verification failed: production bootstrap must stop at the pending schema gate`.
+
+#### Evidence
+
+- All project PHP files passed PHP 8.1 syntax checks immediately before the failure.
+- The verifier failed on its first production-state assertion.
+- Exact earlier gate/result code: `blocked_dependency` / sanitized message `The packaged Action Scheduler library could not be registered.`
+- Isolated probe: the typed verifier stub rejected Action Scheduler's deferred callback string before that function was declared.
+- Frequency: deterministic with the original typed stub; absent with WordPress-compatible stub semantics.
+
+#### Impact and scope
+
+The production implementation remained fail closed and was not defective. The inaccurate test stub made the verifier report the wrong terminal state and initially obscured whether the packaged loader was valid. No product service or user data was exposed.
+
+#### Cause analysis
+
+- **Proximate cause:** The verifier declared its `add_action()` callback parameter as PHP `callable`; Action Scheduler registers a string callback before the conditional function declaration becomes callable.
+- **Root cause:** The WordPress stub narrowed the real `add_action()` contract, whose callback parameter is intentionally untyped and accepts deferred callback strings.
+- **Contributing factors:** The production dependency loader correctly sanitized the caught `TypeError`, so the first black-box assertion exposed only the terminal state.
+- **Why existing controls missed it:** This was the first test executing Action Scheduler's early registration path through a locally defined WordPress hook stub.
+
+#### Resolution
+
+- **Fix:** Changed both standalone WordPress `add_action()` stubs to accept `mixed` callbacks, matching WordPress's deferred-callback behavior. Kept production exception sanitization and fail-closed dependency handling unchanged.
+- **Data repair:** Not required.
+- **Backward compatibility:** Unreleased foundation code only.
+
+#### Recurrence prevention
+
+- New invariant/guard: WordPress test doubles must not narrow callback/input contracts in ways the real API does not.
+- Regression test: corrected `tools/verify-bootstrap.php` loads the real staged Action Scheduler and reaches `blocked_schema`.
+- Broader related tests: dependency, architecture, compatibility, foundation, container negative paths, hook idempotency, and task graph.
+- Documentation/task/memory updates: task evidence, changelog, bug register, and project memory updated.
+- Monitoring/alert: bootstrap verification fails before task completion when the terminal state differs from the intended gate.
+
+#### Verification
+
+- Command/check: isolated Action Scheduler load probe before/after the stub correction; PHP 8.1 `php tools/verify-bootstrap.php`; architecture, compatibility, and foundation verifiers.
+- Result: the isolated probe identified the narrowed stub; corrected bootstrap verification passed dependency loading, intended schema stop, diagnostics, gates, container failures, hook idempotency, and site isolation; adjacent verifiers passed.
+- Verified by/date: Codex, 2026-07-27 14:37:48 UTC.
+
+#### Timeline
+
+- `2026-07-27 14:29:27 UTC` — First complete bootstrap verifier stopped before the expected schema state; defect opened.
+- `2026-07-27 14:32:00 UTC` — Stable state, sanitized diagnostic, and isolated probe traced the failure to the narrowed `add_action()` stub.
+- `2026-07-27 14:37:48 UTC` — WordPress-compatible stub semantics and the expanded bootstrap/adjacent regression suite passed; defect closed.
+
 ### BUG-0011 — Compatibility verifier coupled platform checks to mutable policy status
 
 - **State:** CLOSED

@@ -1,14 +1,14 @@
 # WP FormVault Service Container and Module Boundaries
 
 Owning task: `ARCH-004`  
-Status: Accepted architecture contract; runtime implementation remains `FND-003`  
+Status: Accepted architecture contract; base container/bootstrap implemented by `FND-003`, schema/product providers remain in their owning tasks
 Machine-readable graph: [`module-boundaries.json`](./module-boundaries.json)
 
 ## Scope and evidence boundary
 
-This document defines how WP FormVault will compose services and which modules may depend on which other modules. It is an implementation constraint, not evidence that the service container, plugin bootstrap, migrations, hooks, or product services exist.
+This document defines how WP FormVault composes services and which modules may depend on which other modules. The base container, dependency loader, compatibility/schema gates, safe diagnostics, and composition root now exist. This document is not evidence that migrations, schema-dependent product registrars, or feature modules exist.
 
-`FND-003` owns the first runtime implementation. Later module tasks own their services. `tools/verify-architecture.php` verifies the graph and current source imports, while runtime behavior must be proven by the tests attached to the implementing tasks.
+`FND-003` owns the base runtime implementation. Later module tasks own their services. `tools/verify-architecture.php` verifies the graph and current source imports; `tools/verify-bootstrap.php` verifies the container and fail-closed root. Feature behavior remains subject to tests attached to its implementing task.
 
 ## Architectural goals
 
@@ -34,7 +34,7 @@ No feature service may receive `ServiceContainer`, a container interface, `Core\
 
 ### Required startup sequence
 
-`FND-003` must preserve this fail-closed order:
+The implemented base and every future provider must preserve this fail-closed order:
 
 1. `wp-formvault.php` performs the direct-access guard, defines verified identity/path/platform constants, and registers the internal autoloader.
 2. The isolated production autoloader is loaded when present. A missing/corrupt production dependency tree produces a safe administrator diagnostic; product services do not start.
@@ -178,7 +178,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools/verify-task-graph.ps1
 
 `ARCH-004` is complete when the document and JSON graph agree, every planned module is represented, dependency layers are acyclic and inward-pointing, terminal modules are not depended upon, and current PHP imports do not violate the public-surface/container rules.
 
-`FND-003` must additionally prove:
+Runtime container verification requires:
 
 - idempotent plugin boot and hook registration;
 - lazy shared service identity and explicit transient factories;
@@ -187,6 +187,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools/verify-task-graph.ps1
 - container access limited to the composition root;
 - constructor-injected substitutes in unit tests;
 - safe multisite site-context isolation.
+
+`tools/verify-bootstrap.php` supplies the current `FND-003` evidence. Production boot intentionally reaches `blocked_schema` after dependency and compatibility success because `DB-002` has not implemented the versioned schema gate yet. No product hook registrar is configured in that state.
 
 ## Change control
 

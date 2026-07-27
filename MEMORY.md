@@ -1,7 +1,7 @@
 # WP FormVault Project Memory
 
 Last updated: 2026-07-27  
-Memory status: Current for the verified foundation scaffold, dependency baseline, and accepted service-container/module-boundary architecture.
+Memory status: Current for the verified foundation scaffold, dependency baseline, implemented base container/bootstrap, and enforced module architecture.
 
 ## How to use this memory
 
@@ -57,7 +57,7 @@ Never:
 
 ## Current project state
 
-**Current:** The workspace contains the canonical plan/control documents, a verified WordPress plugin foundation scaffold, the implemented Composer dependency build/isolation layer, and an enforceable service-container/module-boundary architecture contract. The scaffold defines plugin metadata/constants, registers the internal namespace autoloader, and tracks the planned module directories. It does not yet instantiate the documented service container, start product services, or load third-party services from the plugin bootstrap. There is no runtime service container, activation lifecycle, database migration, PHPUnit/CI framework, production ZIP, or release.
+**Current:** The workspace contains the canonical plan/control documents, a verified WordPress plugin foundation, the implemented Composer dependency build/isolation layer, the explicit base service container, a fail-closed composition root, and an enforceable module-boundary contract. The bootstrap loads the isolated dependency tree, registers the bundled Action Scheduler loader without early API calls, verifies runtime compatibility, and intentionally stops at the pending schema gate. No schema-dependent product hook registrar starts. There is no activation lifecycle, database migration/schema, product queue integration, PHPUnit/CI framework, production ZIP, or release.
 
 **Current completed controls:**
 
@@ -74,12 +74,14 @@ Never:
 - The lock-only dependency build validates/audits the lock, verifies platform requirements, generates the isolated tree, stages Action Scheduler, generates notices, lints 722 PHP files, and passes conflict plus XLSX/ZIP/Complex/Matrix runtime tests.
 - `docs/architecture/service-container-and-module-boundaries.md` defines the composition root, fail-closed startup gates, container scope, public module surfaces, interaction rules, and ownership boundaries.
 - `docs/architecture/module-boundaries.json` records the 15-module/63-edge inward dependency graph; `tools/verify-architecture.php` validates that graph and current PHP imports.
+- `includes/Core/ServiceContainer.php` implements explicit values, lazy shared factories, transient factories, aliases, type checks, circular/missing/duplicate detection, site identity, and immutable freeze.
+- `includes/Core/Plugin.php` implements the idempotent composition root and ordered dependency, compatibility, and schema gates; `tools/verify-bootstrap.php` exercises its positive and negative paths under PHP 8.1.
 - `tools/verify-foundation.php` passes in the local PHP 8.2.31 container.
 - `tools/verify-task-graph.ps1` validates all 198 tasks and 325 dependency edges with no missing references or cycles.
 
-**Current blockers:** None confirmed for the next foundation task. `BUG-0004` through `BUG-0011` are closed with reproducible evidence.
+**Current blockers:** None confirmed for the next architecture/tooling task. The production root's `blocked_schema` state is intentional until `DB-002`; it is not evidence of a working database migration. `BUG-0004` through `BUG-0013` are closed with reproducible evidence.
 
-**Recommended next task:** `FND-003` — implement the documented plugin bootstrap and service container without starting schema-dependent product services.
+**Recommended next task:** `ARCH-005` — define coding standards, static analysis, test layout, and the CI matrix before expanding runtime modules.
 
 ## Project identity
 
@@ -116,18 +118,18 @@ The WordPress minimum intentionally changed from the original 6.2 plan baseline 
 - `wp-formvault.php` is the only WordPress plugin entry file.
 - Runtime PHP files stop when `ABSPATH` is not defined.
 - The entry file declares the WordPress/PHP minimums and identity/path constants, then registers the internal autoloader.
-- The entry file intentionally does not instantiate a plugin/service container or register product hooks; that belongs to `FND-003`.
+- The entry file delegates once to `WPFormVault\Core\Plugin`, which creates the request/site graph and runs fail-closed bootstrap gates.
 - `WPFormVault\Autoloader` maps namespace-relative class names into `/includes`, validates every namespace segment, ignores unrelated/unsafe names, and registers only once.
-- Composer manifest/lock and generated dependency tooling are implemented. Loading the isolated runtime autoloader and composing services remains `FND-003`; integrating Action Scheduler runtime hooks remains `QUEUE-001`.
+- The bootstrap loads the isolated runtime autoloader and registers the unprefixed Action Scheduler arbitration loader early. It does not call Action Scheduler APIs; runtime queue integration remains `QUEUE-001`.
 - Module directories mirror the hardened plan: Core, Adapters, Sync, Submissions, Workflow, Reports, Scheduling, Email, Downloads, Privacy, Notifications, Audit, Rest, Health, and Admin, plus assets, languages, and templates.
 - The standalone verifier uses only non-production WordPress stubs and must not be loaded by WordPress.
 
 ## Service-container and module-boundary baseline
 
-**Current architecture contract; runtime implementation is still planned:**
+**Current base implementation and architecture contract:**
 
 - `WPFormVault\Core\Plugin` is the sole application composition root and the only production class allowed to import concrete implementations from every module for wiring.
-- `WPFormVault\Core\ServiceContainer` will be a small project-owned container: explicit factories/values, no reflection auto-wiring, lazy request/site-scoped shared services, controlled transient factories, circular/missing/duplicate detection, and freeze before hook registration.
+- `WPFormVault\Core\ServiceContainer` is a small project-owned container: explicit factories/values, no reflection auto-wiring, lazy request/site-scoped shared services, controlled transient factories, aliases, type enforcement, circular/missing/duplicate detection, and freeze before hook registration.
 - Feature services never receive the container, a generic resolver, or `Core\Plugin`; they receive exact constructor dependencies.
 - Boot is fail closed in this order: entry/autoload guards, dependency availability, early Action Scheduler registration without early API calls, platform compatibility, per-site schema/migration gate, definition validation/freeze, then idempotent product-hook registration.
 - Cross-module imports are limited to the provider's `Contracts`, `DTO`, `Events`, and `Value` namespaces. Concrete cross-module wiring is restricted to the composition root.
@@ -135,6 +137,7 @@ The WordPress minimum intentionally changed from the original 6.2 plan baseline 
 - AccessScope remains a repository/query-layer concern; presentation and transport modules cannot construct SQL or bypass scope.
 - Container sharing is confined to one PHP request and current site. Multisite blog switches require a target-site graph and guaranteed restoration.
 - Module graph changes must update the architecture document and machine-readable graph and pass `php tools/verify-architecture.php`.
+- `tools/verify-bootstrap.php` proves gate order, dependency loading, sanitized diagnostics, constructor-injected substitutes, hook idempotency, container failure modes, and independent site graphs.
 
 The accepted graph contains 15 modules and 63 explicitly allowed dependencies. Omitted edges are forbidden; being acyclic alone does not authorize a dependency.
 
@@ -160,6 +163,8 @@ The accepted graph contains 15 modules and 63 explicitly allowed dependencies. O
 See `docs/architecture/dependency-policy.md` for the complete policy and evidence links.
 
 Manifest constraints select reviewed compatible lines (`~5.8.1`, `~3.0.2`, and `~3.9.3`). `composer.lock` and build verification define the exact shipped versions; no production installation performs dependency updates.
+
+The measured fully clean Docker Desktop/Windows bind-mount dependency build is approximately 306 seconds. Callers use a minimum 420-second limit and inspect for a still-running project build container after interruption before retrying (`BUG-0013`).
 
 ## Product concept
 
@@ -466,7 +471,11 @@ The current lock has seven runtime packages. Generic libraries are isolated unde
 
 ### 2026-07-27 — Explicit composition root and enforceable module graph
 
-`WPFormVault\Core\Plugin` is the sole composition root and `WPFormVault\Core\ServiceContainer` is the planned explicit, frozen, request/site-scoped container. Feature services use constructor injection and cannot resolve arbitrary services. The accepted 15-module graph permits only documented inward dependencies and public `Contracts`, `DTO`, `Events`, or `Value` surfaces; `Admin` and `Rest` remain terminal inbound modules. A machine-readable graph and source verifier enforce this architecture before `FND-003`.
+`WPFormVault\Core\Plugin` is the sole composition root and `WPFormVault\Core\ServiceContainer` is the explicit, frozen, request/site-scoped container. Feature services use constructor injection and cannot resolve arbitrary services. The accepted 15-module graph permits only documented inward dependencies and public `Contracts`, `DTO`, `Events`, or `Value` surfaces; `Admin` and `Rest` remain terminal inbound modules. A machine-readable graph and source verifier enforce this architecture.
+
+### 2026-07-27 — Base runtime boot remains schema-gated
+
+The entry file now delegates to the idempotent composition root. It loads the locked isolated runtime, registers Action Scheduler for WordPress-wide arbitration without calling its APIs early, checks platform compatibility, and then stops at `blocked_schema` through `PendingSchemaGate`. This is intentionally fail closed: `DB-002` must replace the pending gate before any schema-dependent hook registrar can start. The container implementation is usable and verified independently with injected passing gates, but that test path is not a claim that the database or product services exist.
 
 ## Memory maintenance checklist
 

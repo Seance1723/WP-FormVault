@@ -1,7 +1,7 @@
 # WP FormVault Task Register
 
 Last updated: 2026-07-27  
-Current stage: Service-container and module-boundary architecture complete; plugin bootstrap/container implementation is next (`FND-003`).
+Current stage: Base plugin composition root and service container complete; engineering standards/test matrix are next (`ARCH-005`).
 
 ## Purpose
 
@@ -85,7 +85,7 @@ Never use “implemented as planned” as evidence.
 | ARCH-002 | Define supported WordPress/PHP/database compatibility matrix | `COMPLETE` | ARCH-001 | Option A selected by the user on 2026-07-27: WordPress 6.5+, Action Scheduler 3.9.3, PHP 8.1+ on 64-bit, MySQL 5.7+ or MariaDB 10.4+. Verified under PHP 8.1.34 with compatibility/foundation checks and an acyclic 198-task/325-edge graph. The verifier now targets stable compatibility facts rather than mutable policy status. Full CI-matrix execution remains `ARCH-005`/`QA-001`. (`BUG-0005`, `BUG-0011`) |
 | ARCH-003 | Define Composer dependency versions and conflict policy | `COMPLETE` | FND-001 | Policy and first minimum-platform lock verified 2026-07-27. PhpSpreadsheet 5.8.1 is the last PHP 8.1 line; Action Scheduler 3.9.3 is the latest WordPress-6.5-compatible line; ZipStream remains 3.0.2. The lock-only build passed strict validation, audit, isolation, and runtime smoke tests. (`BUG-0006`, `BUG-0007`) |
 | ARCH-004 | Define service-container composition and module boundaries | `COMPLETE` | FND-001 | Accepted `Core\Plugin` composition root and `Core\ServiceContainer` contract, fail-closed startup sequence, explicit service scopes, 15-module/63-edge inward graph, public-surface rules, and ownership boundaries. Verified 2026-07-27 under PHP 8.1.34 with `php tools/verify-architecture.php`; all module directories/imports passed and the graph is acyclic by strict layer direction. |
-| ARCH-005 | Define coding standards, static-analysis level, test layout, and CI matrix | `PLANNED` | FND-001 | WordPress coding standards required. |
+| ARCH-005 | Define coding standards, static-analysis level, test layout, and CI matrix | `READY` | FND-001 | Recommended next task before expanding runtime modules; WordPress coding standards required. |
 | ARCH-006 | Record architecture decisions that alter the implementation plan | `ACTIVE` | GOV-007 | Add dated decisions to `MEMORY.md`; update the plan if requirements change. |
 
 ## FND — Plugin foundation and lifecycle
@@ -94,7 +94,7 @@ Never use “implemented as planned” as evidence.
 |---|---|---|---|---|
 | FND-001 | Scaffold `wp-formvault.php`, module directories, autoloading, and constants | `COMPLETE` | ARCH-001 | Verified 2026-07-27 with PHP 8.2.31 container: all 3 PHP files pass `php -l`; `php tools/verify-foundation.php` passes constants, paths, namespace guard, and single autoloader registration; planned directories and legacy-name checks pass; `git diff --check` passes. |
 | FND-002 | Add Composer manifest and production dependency strategy | `COMPLETE` | FND-001, ARCH-003 | Verified 2026-07-27 with normal lock-only `tools/run-dependency-build.ps1`: digest-pinned PHP 8.1.34/Composer 2.10.2; strict validate; no audit advisories; all platform requirements pass; seven runtime packages locked; Strauss correction counts Complex=42/Matrix=21/ZipStream=4; Action Scheduler 3.9.3 staged; notices generated; 722 generated PHP files linted; unprefixed-conflict, Complex/Matrix, and real XLSX/ZIP tests pass. Lock SHA-256: `5EAF5929FA2B30EE29FD8A134DA37DA2D79FAB86C05F20D15B6B9C8A06EC3E65`. (`BUG-0004`, `BUG-0007`–`BUG-0010`) |
-| FND-003 | Implement plugin bootstrap and service container | `READY` | FND-001, ARCH-004 | Implement the accepted architecture contract; prevent product work before dependency, compatibility, and migration gates. |
+| FND-003 | Implement plugin bootstrap and service container | `COMPLETE` | FND-001, ARCH-004 | Verified 2026-07-27 under PHP 8.1.34: explicit site-scoped container passes lazy shared/transient/alias/type/freeze and duplicate/missing/circular failures; production dependency and compatibility gates pass and stop at intentional `blocked_schema`; diagnostics expose no paths; injected passing gates construct/register one hook registrar once; independent site graphs do not share services. Clean lock-only dependency build exited 0 in 305.9 seconds with audit/platform/722 generated syntax/isolation/XLSX checks passing; architecture scanned 12 runtime PHP files; task graph and diff checks passed. (`BUG-0012`, `BUG-0013`) |
 | FND-004 | Implement activator and per-site capability installation | `PLANNED` | DB-001, SEC-001 | Must support single site and multisite. |
 | FND-005 | Implement deactivator: unschedule events and clear locks, preserve data | `PLANNED` | QUEUE-001, QUEUE-004 | Verify no data deletion. |
 | FND-006 | Implement guarded uninstall with delete-data setting defaulting OFF | `PLANNED` | DB-001, CLEANUP-001, MULTISITE-003 | Test both preservation and deletion modes. |
@@ -105,7 +105,7 @@ Never use “implemented as planned” as evidence.
 
 | ID | Submodule / task | State | Depends on | Notes / evidence |
 |---|---|---|---|---|
-| DB-001 | Finalize table inventory, columns, data types, and application-level relations | `PLANNED` | FND-001 | Use `$wpdb->prefix . 'wpfv_'`; all runtime timestamps UTC. |
+| DB-001 | Finalize table inventory, columns, data types, and application-level relations | `READY` | FND-001 | Use `$wpdb->prefix . 'wpfv_'`; all runtime timestamps UTC. Sequence after `ARCH-005` unless reprioritized. |
 | DB-002 | Implement ordered, idempotent schema migration runner and schema version | `PLANNED` | DB-001 | Add migration lock and upgrade guard. |
 | DB-003 | Create forms, fields, submissions, snapshots, and indexed values tables | `PLANNED` | DB-002 | Hybrid canonical JSON + selective EAV model. |
 | DB-004 | Create schedules, mappings, filters, recipients, reports, files, and delivery tables | `PLANNED` | DB-002 | Preserve intended period and idempotency key. |
@@ -120,7 +120,7 @@ Never use “implemented as planned” as evidence.
 
 | ID | Submodule / task | State | Depends on | Notes / evidence |
 |---|---|---|---|---|
-| SEC-001 | Define roles and `wpfv_*` capability matrix | `PLANNED` | FND-001 | Administrator, Report Manager, Report Viewer, Form Manager. |
+| SEC-001 | Define roles and `wpfv_*` capability matrix | `READY` | FND-001 | Administrator, Report Manager, Report Viewer, Form Manager. Sequence after `ARCH-005` unless reprioritized. |
 | SEC-002 | Implement AccessScope and form/schedule access grants | `PLANNED` | DB-006, SEC-001 | Enforcement must live in repository/query paths. |
 | SEC-003 | Implement nonce and capability checks for every write action | `PLANNED` | SEC-001 | Cover admin, AJAX, REST, bulk, run-now, delete. |
 | SEC-004 | Implement prepared-query builders and schema-driven validation | `PLANNED` | DB-001 | No dynamic user values concatenated into SQL; dependency direction corrected by BUG-0001. |
@@ -261,7 +261,7 @@ Never use “implemented as planned” as evidence.
 
 | ID | Submodule / task | State | Depends on | Notes / evidence |
 |---|---|---|---|---|
-| EMAIL-001 | Implement recipient groups and To/CC/BCC validation | `PLANNED` | FND-003 | Validate every address. |
+| EMAIL-001 | Implement recipient groups and To/CC/BCC validation | `READY` | FND-003 | Validate every address; dependency-ready but sequenced in the reporting/delivery phase. |
 | EMAIL-002 | Implement subject/body templates and documented placeholders | `PLANNED` | EMAIL-001 | Escape values for HTML/plain-text context. |
 | EMAIL-003 | Implement CR/LF header-injection guard | `PLANNED` | EMAIL-001 | Cover sender, reply-to, subject, and display names. |
 | EMAIL-004 | Implement queued `wp_mail` handoff and honest delivery states | `PLANNED` | QUEUE-002, EMAIL-002 | Do not claim delivery confirmation from boolean handoff. |
@@ -315,7 +315,7 @@ Never use “implemented as planned” as evidence.
 | AUDIT-002 | Audit permissions, schedules, submissions, reports, downloads, automation, and privacy events | `PLANNED` | AUDIT-001 | Cover success and failure where material. |
 | AUDIT-003 | Implement subject erasure pseudonymization | `PLANNED` | AUDIT-001 | Preserve action history without subject PII; privacy erasure consumes this primitive (BUG-0001). |
 | AUDIT-004 | Build capability-gated audit page and filters | `PLANNED` | ADMIN-001, AUDIT-001 | Escape all output. |
-| LOG-001 | Implement structured operational logger with PII redaction | `PLANNED` | FND-003 | No raw submission field values, tokens, passwords, or paths. |
+| LOG-001 | Implement structured operational logger with PII redaction | `READY` | FND-003 | No raw submission field values, tokens, passwords, or paths; part of the foundation phase after engineering standards. |
 | LOG-002 | Implement configurable rotation/retention and diagnostic export | `PLANNED` | LOG-001 | Diagnostic export must remain redacted. |
 
 ## NOTIFY — Notifications and preferences
@@ -389,7 +389,7 @@ Never use “implemented as planned” as evidence.
 
 | ID | Submodule / task | State | Depends on | Notes / evidence |
 |---|---|---|---|---|
-| HEALTH-001 | Add WordPress Site Health integration | `PLANNED` | FND-003 | Cron, storage, queue, adapter/capture checks. |
+| HEALTH-001 | Add WordPress Site Health integration | `READY` | FND-003 | Cron, storage, queue, adapter/capture checks; dependency-ready but sequenced after core operational services. |
 | HEALTH-002 | Implement cron heartbeat and inactivity alert | `PLANNED` | QUEUE-001, NOTIFY-001 | Recommend server cron when unhealthy. |
 | HEALTH-003 | Implement writable/protected storage probe | `PLANNED` | CLEANUP-001 | Detect direct web exposure where testable. |
 | HEALTH-004 | Implement queue backlog/stuck/failure metrics | `PLANNED` | QUEUE-004, HEALTH-001 | Provide safe reclaim controls. |
@@ -432,4 +432,4 @@ No confirmed implementation blocker remains. The following choices stay within t
 
 ## Next executable task
 
-`FND-003` is the recommended `READY` task: implement the accepted plugin bootstrap/container contract and prove its fail-closed gates. `ADAPTER-001` is also dependency-ready but follows the foundation bootstrap in the planned delivery order.
+`ARCH-005` is the recommended `READY` task: define coding standards, static-analysis level, test layout, and the supported CI matrix before expanding runtime modules. `DB-001`, `SEC-001`, `ADAPTER-001`, `LOG-001`, `EMAIL-001`, and `HEALTH-001` are also dependency-ready but remain sequenced by the implementation phases.

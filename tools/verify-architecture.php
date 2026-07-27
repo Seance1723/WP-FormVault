@@ -203,7 +203,7 @@ $required_doc_contracts = array(
 	'The container is frozen before hook registration',
 	'Admin` and `Rest` are terminal inbound modules',
 	'Query contracts apply `AccessScope` inside the repository/query path',
-	'FND-003` must additionally prove:',
+	'Runtime container verification requires:',
 );
 
 foreach ( $required_doc_contracts as $required_contract ) {
@@ -284,7 +284,7 @@ foreach ( $php_iterator as $php_file ) {
 	if (
 		! $is_composition_root
 		&& ! $is_container_class
-		&& str_contains( $source, $container['class'] )
+		&& 1 === preg_match( '/\bServiceContainer\b/', $source )
 	) {
 		wpfv_architecture_fail( "container reference outside composition root: {$relative_path}" );
 	}
