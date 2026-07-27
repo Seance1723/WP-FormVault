@@ -1,11 +1,13 @@
-# Universal WordPress Form Reporting & Workflow Plugin
+# WP FormVault
 ## Upgraded Implementation Plan (v2 — Hardened)
 
 **Document type:** Technical implementation plan
 **Target platform:** WordPress 6.2+ / PHP 8.1+ / MySQL 5.7+ or MariaDB 10.4+
-**Primary goal:** A universal form-submission management, reporting, scheduling, workflow, and Excel-export layer that sits on top of existing WordPress form plugins without replacing them.
+**Primary goal:** WP FormVault is a universal form-submission management, reporting, scheduling, workflow, and Excel-export layer that sits on top of existing WordPress form plugins without replacing them.
 
 > This version supersedes the original plan. It preserves the original scope and intent, but re-analyzes the core logic, hardens security, resolves internal contradictions, and fills structural gaps. Every materially changed or added area is marked **[HARDENED]**, **[FIXED]**, or **[NEW]** so the deltas are auditable.
+
+**Project identity:** display name `WP FormVault`; plugin slug and text domain `wp-formvault`; bootstrap file `wp-formvault.php`; PHP namespace root `WPFormVault`; database, capability, hook, and route identifier prefix `wpfv`.
 
 ---
 
@@ -23,7 +25,7 @@ This section is the audit trail of the review. It exists so reviewers can see th
 | C4 | WP-Cron drives schedules; retries cover "failure." | WP-Cron only fires on traffic. On a low-traffic site a weekly report can silently never run. Retries handle *failures*, not *missed windows*. | Add **missed-window catch-up**: on every heartbeat, compute all *intended* periods since last successful run and enqueue any that were skipped, each using its own intended window (§8.4, §9). Recommend **Action Scheduler as primary**, WP-Cron as trigger, server cron as the reliability backstop. |
 | C5 | "Anyone with the secure random link can download the ZIP. No login or password." | This is a **public, unauthenticated URL to a bundle of personal data** (resumes, IDs, etc.). Links leak via forwarding, mail logs, proxies, referrers. 30-day life is long. Direct GDPR exposure. | Public mode is retained but is **opt-in per schedule with an explicit risk acknowledgment**, **not the default**. Add password protection, authenticated-download mode, download-count caps, optional IP binding, tokens **stored hashed**, and short-lived signed variants (§14). |
 | C6 | Formula-injection escaping covers `= + - @`. | Incomplete: misses leading **tab (0x09)**, **carriage return (0x0D)**, DDE payloads (`=cmd\|...`), and leading whitespace before a trigger char. Prefix-only escaping can corrupt legitimate data. | Full trigger set + **explicit string cell typing** in PhpSpreadsheet, applied to text cells only, with a documented binder strategy (§11.2). manifest.csv and email placeholders are covered too. |
-| C7 | EAV table `wp_ufr_submission_values` (row per field) drives all filtering/sorting. | At 100k submissions × N fields this is millions of rows; filtering/sorting on EAV is slow and hard to index. | Hybrid storage: **canonical JSON snapshot** per submission + **indexed EAV for filterable fields only** + optional generated columns (§6.5). Concrete indexing strategy added. |
+| C7 | EAV table `wp_wpfv_submission_values` (row per field) drives all filtering/sorting. | At 100k submissions × N fields this is millions of rows; filtering/sorting on EAV is slow and hard to index. | Hybrid storage: **canonical JSON snapshot** per submission + **indexed EAV for filterable fields only** + optional generated columns (§6.5). Concrete indexing strategy added. |
 
 ### 0.2 Security hardening summary
 
@@ -204,8 +206,8 @@ Normalized Submission Index  (UTC timestamps, canonical JSON snapshot + indexed 
 ### 4.1 Recommended plugin structure **[HARDENED]**
 
 ```text
-universal-form-reports/
-├── universal-form-reports.php
+wp-formvault/
+├── wp-formvault.php
 ├── uninstall.php
 ├── composer.json
 ├── readme.txt
@@ -308,23 +310,23 @@ Custom tables (not post-meta) for scale. All timestamps are stored in **UTC** (`
 ### 6.1 Core tables
 
 ```text
-wp_ufr_forms                 wp_ufr_schedules
-wp_ufr_form_fields           wp_ufr_schedule_forms
-wp_ufr_submissions           wp_ufr_schedule_fields
-wp_ufr_submission_values     wp_ufr_schedule_filters
-wp_ufr_submission_snapshot   wp_ufr_schedule_recipients   [NEW: snapshot table]
-wp_ufr_submission_workflow   wp_ufr_schedule_mappings
-wp_ufr_submission_notes      wp_ufr_report_templates
-wp_ufr_submission_tags       wp_ufr_reports
-wp_ufr_tags                  wp_ufr_report_files
-wp_ufr_saved_views           wp_ufr_report_records
-wp_ufr_download_tokens       wp_ufr_report_deliveries
-wp_ufr_download_logs         wp_ufr_notifications
-wp_ufr_notification_prefs    wp_ufr_audit_logs
-wp_ufr_sync_logs             wp_ufr_jobs
-wp_ufr_automation_rules      wp_ufr_automation_actions
-wp_ufr_sync_cursors          wp_ufr_access_grants          [NEW: cursors, ACL]
-wp_ufr_locks                 wp_ufr_schema_version          [NEW: locking, migrations]
+wp_wpfv_forms                 wp_wpfv_schedules
+wp_wpfv_form_fields           wp_wpfv_schedule_forms
+wp_wpfv_submissions           wp_wpfv_schedule_fields
+wp_wpfv_submission_values     wp_wpfv_schedule_filters
+wp_wpfv_submission_snapshot   wp_wpfv_schedule_recipients   [NEW: snapshot table]
+wp_wpfv_submission_workflow   wp_wpfv_schedule_mappings
+wp_wpfv_submission_notes      wp_wpfv_report_templates
+wp_wpfv_submission_tags       wp_wpfv_reports
+wp_wpfv_tags                  wp_wpfv_report_files
+wp_wpfv_saved_views           wp_wpfv_report_records
+wp_wpfv_download_tokens       wp_wpfv_report_deliveries
+wp_wpfv_download_logs         wp_wpfv_notifications
+wp_wpfv_notification_prefs    wp_wpfv_audit_logs
+wp_wpfv_sync_logs             wp_wpfv_jobs
+wp_wpfv_automation_rules      wp_wpfv_automation_actions
+wp_wpfv_sync_cursors          wp_wpfv_access_grants          [NEW: cursors, ACL]
+wp_wpfv_locks                 wp_wpfv_schema_version          [NEW: locking, migrations]
 ```
 
 ### 6.2 Key submission fields
@@ -374,18 +376,18 @@ idempotency_key  -- [NEW] prevents duplicate generation/send
 
 Hybrid model instead of pure EAV:
 
-1. **`wp_ufr_submission_snapshot`** — one row per submission holding the full normalized record as canonical JSON (`LONGTEXT` or MySQL `JSON`). This is the reproducible record and the primary read path for detail views and report generation.
-2. **`wp_ufr_submission_values`** — indexed EAV **only for fields flagged filterable/sortable** by the admin per form. Keeps the EAV small and every column indexed.
+1. **`wp_wpfv_submission_snapshot`** — one row per submission holding the full normalized record as canonical JSON (`LONGTEXT` or MySQL `JSON`). This is the reproducible record and the primary read path for detail views and report generation.
+2. **`wp_wpfv_submission_values`** — indexed EAV **only for fields flagged filterable/sortable** by the admin per form. Keeps the EAV small and every column indexed.
 3. On MySQL 5.7+/MariaDB 10.2+, optionally expose **generated columns** over the JSON for hot filter fields, with indexes, avoiding EAV entirely for those.
 
 This keeps filtering fast without exploding row counts, and keeps a clean reproducible snapshot for reports.
 
 ### 6.6 Indexes & constraints **[HARDENED]**
 
-- **UNIQUE** `(source_plugin, source_form_id, source_submission_id)` on `wp_ufr_submissions` → idempotent capture/reconciliation (resolves double-index on repeated hooks).
+- **UNIQUE** `(source_plugin, source_form_id, source_submission_id)` on `wp_wpfv_submissions` → idempotent capture/reconciliation (resolves double-index on repeated hooks).
 - Indexes on `submitted_at`, `source_form_id`, `submission_status`, `workflow_status`, `assigned_user_id`, `follow_up_at`, `data_hash`, and `(schedule_id, period_start)`.
-- `wp_ufr_submission_values`: index `(field_key, value_indexed)` and `(submission_id, field_key)`.
-- `wp_ufr_download_tokens`: index on `token_hash`, `expires_at`, `revoked`.
+- `wp_wpfv_submission_values`: index `(field_key, value_indexed)` and `(submission_id, field_key)`.
+- `wp_wpfv_download_tokens`: index on `token_hash`, `expires_at`, `revoked`.
 - Foreign-key-style integrity enforced in application layer (WP core avoids DB-level FKs across engines).
 
 ---
@@ -463,7 +465,7 @@ Default (configurable) sequence: `+0` (scheduled), `+15m`, `+1h`, `+3h`, then fi
 
 ### 9.4 Concurrency & locking **[NEW — resolves I]**
 
-- **Per-schedule run lock** (`wp_ufr_locks` row or MySQL `GET_LOCK`) claimed before generation; prevents two overlapping cron passes from double-generating.
+- **Per-schedule run lock** (`wp_wpfv_locks` row or MySQL `GET_LOCK`) claimed before generation; prevents two overlapping cron passes from double-generating.
 - **Stuck-job reclaim**: a job `claimed_at` older than a timeout is reclaimed for retry (covers PHP crashes mid-run).
 - **Max simultaneous report jobs** enforced by the queue, not just documented.
 - Schedule and submission edits use `row_version` **optimistic locking** so two admins can't silently clobber each other.
@@ -485,7 +487,7 @@ Per form: select all / include-exclude fields, rename headers, reorder columns, 
 
 Submission ID, form name, submission date, last updated, source page, source plugin, WP user ID, IP address, status, tags, assignee, priority, follow-up date, internal-note summary.
 
-**IP address and other sensitive fields require `ufr_view_sensitive_fields`** and are gated by export settings (§23, §42).
+**IP address and other sensitive fields require `wpfv_view_sensitive_fields`** and are gated by export settings (§23, §42).
 
 ### 10.3 Filters
 
@@ -612,11 +614,11 @@ ZIP/report downloads default to **authenticated** access. A **public token mode*
 - Token = **256 bits** from `random_bytes()` (CSPRNG), URL-safe encoded.
 - **Only a hash of the token is stored** (`token_hash = sha256(token)`); the raw token exists only in the emailed URL. A DB leak therefore does not expose live download URLs.
 - Lookups compare with `hash_equals()` (constant-time).
-- Non-sequential URLs; no internal IDs exposed. Example: `https://example.com/?ufr_download=<token>`.
+- Non-sequential URLs; no internal IDs exposed. Example: `https://example.com/?wpfv_download=<token>`.
 
 ### 14.2 Access modes
 
-- **Authenticated (default):** requires login + `ufr_download_reports` (and form-level access, §23). Suitable for internal reporting.
+- **Authenticated (default):** requires login + `wpfv_download_reports` (and form-level access, §23). Suitable for internal reporting.
 - **Public (opt-in):** anyone with the link. Requires the admin to tick an acknowledgment that a bundle of personal data will be reachable without login. Strongly recommended to combine with a password.
 - **Optional password:** stored as a hash; prompt gate before serving the file.
 - **Optional IP binding:** restrict to the requester's network where feasible.
@@ -758,22 +760,22 @@ Then set status = New Lead; add tag India; assign sales user;
 ### 23.2 Capabilities
 
 ```text
-ufr_view_dashboard        ufr_view_submissions
-ufr_edit_submissions      ufr_trash_submissions
-ufr_delete_submissions    ufr_manage_workflow
-ufr_manage_schedules      ufr_generate_reports
-ufr_send_reports          ufr_download_reports
-ufr_manage_templates      ufr_manage_integrations
-ufr_manage_settings       ufr_view_audit_logs
-ufr_manage_permissions    ufr_manage_automation
-ufr_view_sensitive_fields                       [NEW]
+wpfv_view_dashboard        wpfv_view_submissions
+wpfv_edit_submissions      wpfv_trash_submissions
+wpfv_delete_submissions    wpfv_manage_workflow
+wpfv_manage_schedules      wpfv_generate_reports
+wpfv_send_reports          wpfv_download_reports
+wpfv_manage_templates      wpfv_manage_integrations
+wpfv_manage_settings       wpfv_view_audit_logs
+wpfv_manage_permissions    wpfv_manage_automation
+wpfv_view_sensitive_fields                       [NEW]
 ```
 
 ### 23.3 Access enforcement at the query layer **[HARDENED — resolves M]**
 
-- Form-level and schedule-level restrictions are stored in **`wp_ufr_access_grants`** (subject = user or role; object = form or schedule).
+- Form-level and schedule-level restrictions are stored in **`wp_wpfv_access_grants`** (subject = user or role; object = form or schedule).
 - The **AccessScope** service injects an accessible-forms constraint into **every** submission/report query for non-admins — enforcement lives in the data layer, not just the UI. Saved views, exports, bulk actions, and downloads all pass through AccessScope, so no path can leak out-of-scope records.
-- `ufr_view_sensitive_fields` gates IP address, user agent, and any admin-marked sensitive field in both UI and exports.
+- `wpfv_view_sensitive_fields` gates IP address, user agent, and any admin-marked sensitive field in both UI and exports.
 - **Public download links** bypass role checks by design; that is exactly why public mode is opt-in with acknowledgment (§14.2). Authenticated download mode honors AccessScope.
 
 ---
@@ -787,7 +789,7 @@ KPI cards (indexed total, new, generated, sent, failed, upcoming schedules, over
 ## 25. Admin Navigation
 
 ```text
-Form Reports
+WP FormVault
 ├── Dashboard        ├── Reports          ├── Integrations
 ├── Submissions      ├── Report Templates ├── Audit Logs
 ├── Saved Views      ├── Automation Rules ├── Permissions
@@ -923,24 +925,24 @@ The UI displays policy and never silently changes it.
 ### 33.1 Filters
 
 ```php
-ufr_supported_adapters        ufr_submission_normalized_data
-ufr_report_query_args         ufr_exported_cell_value
-ufr_excel_filename            ufr_email_subject
-ufr_email_body                ufr_zip_file_path
-ufr_download_expiry           ufr_schedule_next_run
-ufr_access_scope_forms        // [NEW] filter accessible forms
-ufr_cell_sanitizer_triggers   // [NEW] adjust injection trigger set
+wpfv_supported_adapters        wpfv_submission_normalized_data
+wpfv_report_query_args         wpfv_exported_cell_value
+wpfv_excel_filename            wpfv_email_subject
+wpfv_email_body                wpfv_zip_file_path
+wpfv_download_expiry           wpfv_schedule_next_run
+wpfv_access_scope_forms        // [NEW] filter accessible forms
+wpfv_cell_sanitizer_triggers   // [NEW] adjust injection trigger set
 ```
 
 ### 33.2 Actions
 
 ```php
-ufr_submission_indexed        ufr_submission_updated
-ufr_submission_trashed        ufr_report_generated
-ufr_report_sent               ufr_report_failed
-ufr_report_regenerated        ufr_file_cleaned
-ufr_download_completed        ufr_automation_rule_executed
-ufr_capture_integrity_failed  // [NEW]
+wpfv_submission_indexed        wpfv_submission_updated
+wpfv_submission_trashed        wpfv_report_generated
+wpfv_report_sent               wpfv_report_failed
+wpfv_report_regenerated        wpfv_file_cleaned
+wpfv_download_completed        wpfv_automation_rule_executed
+wpfv_capture_integrity_failed  // [NEW]
 ```
 
 ---
@@ -1073,7 +1075,7 @@ This yields broad compatibility without coupling to any single form plugin, whil
 
 ## 40. Schema Migration & Versioning **[NEW]**
 
-- A `wp_ufr_schema_version` record tracks the installed schema.
+- A `wp_wpfv_schema_version` record tracks the installed schema.
 - **`Migrations`** runs ordered, idempotent upgrade steps on activation and on version bump (using `dbDelta` for additive changes and explicit `ALTER`s for the rest).
 - Each migration is reversible-documented and tested (§35.6). Data-transforming migrations run as **batched background jobs** so large sites don't time out on upgrade.
 - The plugin refuses to run report generation mid-migration (guarded by a migration lock).
@@ -1083,7 +1085,7 @@ This yields broad compatibility without coupling to any single form plugin, whil
 ## 41. Uninstall & Data Lifecycle **[NEW]**
 
 - **Deactivation:** unschedule cron/Action Scheduler events, clear locks; **keep all data**.
-- **Uninstall (`uninstall.php`):** driven by a **"Delete all plugin data on uninstall" setting that defaults to OFF**. When OFF, tables and files are preserved (safe reinstall). When ON: drop `wp_ufr_*` tables, remove capabilities, delete generated files and the private storage dir, clear scheduled events and queued actions — across all sites on multisite.
+- **Uninstall (`uninstall.php`):** driven by a **"Delete all plugin data on uninstall" setting that defaults to OFF**. When OFF, tables and files are preserved (safe reinstall). When ON: drop `wp_wpfv_*` tables, remove capabilities, delete generated files and the private storage dir, clear scheduled events and queued actions — across all sites on multisite.
 - Generated-file directory is always cleaned of expired temp files by the retention job regardless of uninstall setting.
 
 ---
