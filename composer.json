@@ -1,0 +1,90 @@
+{
+    "name": "wp-formvault/wp-formvault",
+    "description": "Centralized form-submission reporting, scheduling, workflow, export, and secure delivery for supported WordPress form plugins.",
+    "type": "wordpress-plugin",
+    "license": "GPL-2.0-or-later",
+    "require": {
+        "php": "^8.1",
+        "ext-ctype": "*",
+        "ext-dom": "*",
+        "ext-fileinfo": "*",
+        "ext-filter": "*",
+        "ext-gd": "*",
+        "ext-iconv": "*",
+        "ext-libxml": "*",
+        "ext-mbstring": "*",
+        "ext-simplexml": "*",
+        "ext-xml": "*",
+        "ext-xmlreader": "*",
+        "ext-xmlwriter": "*",
+        "ext-zip": "*",
+        "ext-zlib": "*",
+        "maennchen/zipstream-php": "~3.0.2",
+        "phpoffice/phpspreadsheet": "~5.8.1",
+        "woocommerce/action-scheduler": "~3.9.3"
+    },
+    "require-dev": {
+        "brianhenryie/strauss": "0.28.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "WPFormVault\\": "includes/"
+        }
+    },
+    "config": {
+        "allow-plugins": {},
+        "optimize-autoloader": true,
+        "platform": {
+            "php": "8.1.0"
+        },
+        "platform-check": true,
+        "preferred-install": {
+            "*": "dist"
+        },
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "scripts": {
+        "build-dependencies": [
+            "@php tools/clean-generated-dependencies.php",
+            "@prefix-dependencies",
+            "@patch-prefixed-dependencies",
+            "@stage-action-scheduler",
+            "@generate-dependency-notices",
+            "@lint-generated-dependencies",
+            "@verify-dependencies"
+        ],
+        "generate-dependency-notices": "@php tools/generate-dependency-notices.php",
+        "lint-generated-dependencies": "@php tools/lint-generated-dependencies.php",
+        "patch-prefixed-dependencies": "@php tools/patch-prefixed-dependencies.php",
+        "prefix-dependencies": "strauss",
+        "stage-action-scheduler": "@php tools/stage-action-scheduler.php",
+        "verify-dependencies": "@php tools/verify-dependencies.php"
+    },
+    "extra": {
+        "strauss": {
+            "target_directory": "vendor-prefixed",
+            "namespace_prefix": "WPFormVault\\Vendor\\",
+            "classmap_prefix": "WPFormVault_Vendor_",
+            "constant_prefix": "WPFV_VENDOR_",
+            "packages": [
+                "composer/pcre",
+                "maennchen/zipstream-php",
+                "markbaker/complex",
+                "markbaker/matrix",
+                "phpoffice/phpspreadsheet",
+                "psr/simple-cache"
+            ],
+            "update_call_sites": false,
+            "include_root_autoload": false,
+            "classmap_output": true,
+            "optimize_autoloader": true,
+            "delete_vendor_packages": false,
+            "delete_vendor_files": false,
+            "exclude_git_files": true,
+            "include_modified_date": false,
+            "include_author": false
+        }
+    }
+}

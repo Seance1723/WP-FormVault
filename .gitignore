@@ -1,0 +1,7 @@
+/vendor/
+/vendor-prefixed/
+/libraries/action-scheduler/
+/build/
+/.composer-cache/
+/.phpunit.cache/
+/.phpunit.result.cache

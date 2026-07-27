@@ -38,7 +38,7 @@ require dirname( __DIR__ ) . '/wp-formvault.php';
 
 $expected_constants = array(
 	'WPFV_VERSION'                   => '0.0.0-dev',
-	'WPFV_MINIMUM_WORDPRESS_VERSION' => '6.2',
+	'WPFV_MINIMUM_WORDPRESS_VERSION' => '6.5',
 	'WPFV_MINIMUM_PHP_VERSION'       => '8.1',
 	'WPFV_TEXT_DOMAIN'               => 'wp-formvault',
 	'WPFV_TABLE_PREFIX'              => 'wpfv_',

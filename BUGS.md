@@ -41,14 +41,423 @@ This is the mandatory record for defects found during development, testing, depl
 7. Record the fix in [CHANGELOGS.md](./CHANGELOGS.md) and update stable lessons/invariants in [MEMORY.md](./MEMORY.md).
 8. Never paste passwords, raw download tokens, personal form values, secret keys, unrestricted filesystem paths, or other sensitive data into this file.
 
-## Open bugs
+## Recent bugs
+
+Records are ordered by discovery recency. The `State` field is authoritative.
+
+### BUG-0011 — Compatibility verifier coupled platform checks to mutable policy status
+
+- **State:** CLOSED
+- **Severity:** S3 Low
+- **First seen:** 2026-07-27 13:10:04 UTC
+- **Last seen:** 2026-07-27 13:12:52 UTC
+- **Environment:** repository-owned PHP 8.1.34 final verification
+- **Affected version/commit:** unreleased working tree
+- **Affected modules/tasks:** ARCH-002, FND-002
+- **Reporter/owner:** Codex
+
+#### Observed behavior
+
+`tools/verify-compatibility.php` failed after `FND-002` was completed because it still required the dependency policy's former `Status: Accepted; option A selected...` sentence. The policy now correctly says the strategy is accepted and implemented.
+
+#### Expected behavior
+
+The compatibility verifier must enforce stable platform and dependency facts without coupling success to a mutable implementation-lifecycle sentence.
+
+#### Reproduction steps
+
+1. Complete `FND-002` and update `docs/architecture/dependency-policy.md` from accepted to implemented.
+2. Run `php tools/verify-compatibility.php`.
+3. Observe `Compatibility source 'policy' is missing: Status: Accepted; option A selected by the user on 2026-07-27`.
+
+#### Evidence
+
+- Failing command: repository-owned PHP 8.1 invocation of `php tools/verify-compatibility.php`.
+- Policy status: `Accepted and implemented by FND-002`.
+- Frequency: every compatibility-verifier run after the correct lifecycle update.
+
+#### Impact and scope
+
+The final verification gate failed even though the selected compatibility profile did not change. No runtime, package, site, or user data was affected.
+
+#### Cause analysis
+
+- **Proximate cause:** The verifier searched for the exact former policy-status sentence.
+- **Root cause:** A stable compatibility contract check included mutable task/lifecycle prose outside its responsibility.
+- **Contributing factors:** The status sentence happened to contain the original option-selection evidence when the verifier was introduced.
+- **Why existing controls missed it:** The verifier had not been rerun after advancing the policy implementation status.
+
+#### Resolution
+
+- **Fix:** Removed the mutable policy-status assertion and synchronized the Action Scheduler constraint check with the reviewed `~3.9.3` manifest line. The verifier retains checks for the selected WordPress, PHP, exact locked dependency intent, and upstream-version boundary.
+- **Data repair:** Not required.
+- **Backward compatibility:** Verification-only correction; the selected platform remains unchanged.
+
+#### Recurrence prevention
+
+- New invariant/guard: automated compatibility assertions target stable compatibility facts, not task or document lifecycle wording.
+- Regression test: rerun compatibility, foundation, dependency, task-graph, and diff checks after project-record updates.
+- Broader related tests: policy and memory checks continue to require the selected and intentionally excluded dependency lines.
+- Documentation/task/memory updates: task evidence, changelog, bug register, and anti-hallucination memory rule updated.
+- Monitoring/alert: the final verification gate remains fail-closed on real compatibility drift.
+
+#### Verification
+
+- Command/check: PHP 8.1.34 `php tools/verify-compatibility.php`; `php tools/verify-foundation.php`; `php -l tools/verify-compatibility.php`; `powershell -NoProfile -ExecutionPolicy Bypass -File tools\verify-task-graph.ps1`.
+- Result: compatibility and foundation verification passed; corrected verifier syntax passed; task graph passed with 198 tasks, 325 dependency edges, no missing references, and no cycles. The clean dependency build had passed immediately before this final-gate regression was found.
+- Verified by/date: Codex, 2026-07-27 13:12:52 UTC.
+
+#### Timeline
+
+- `2026-07-27 13:10:04 UTC` — Final compatibility gate reproduced the stale-status assertion; `ARCH-002` reopened.
+- `2026-07-27 13:12:52 UTC` — Stable-contract assertions and the complete relevant verification set passed; `ARCH-002` restored to complete and defect closed.
+
+### BUG-0010 — Strauss corrupted namespace/class-homonym return types
+
+- **State:** CLOSED
+- **Severity:** S1 High
+- **First seen:** 2026-07-27 12:47:15 UTC
+- **Last seen:** 2026-07-27 13:07:28 UTC
+- **Environment:** repository-owned PHP 8.1.34 / Composer 2.10.2 / Strauss 0.28.1 build
+- **Affected version/commit:** unreleased working tree
+- **Affected modules/tasks:** ARCH-003, FND-002, EXPORT-001
+- **Reporter/owner:** Codex
+
+#### Observed behavior
+
+The prefixed PhpSpreadsheet XLSX writer fatally failed because Strauss rewrote a `ZipStream` return type alias to `WPFormVault\Vendor\ZipStream`, which PHP resolved relative to the current writer namespace. The returned `WPFormVault\Vendor\ZipStream\ZipStream` object therefore violated the generated return type. The same pattern affected `Complex` and `Matrix` return types.
+
+#### Expected behavior
+
+Every generated type declaration must resolve to the same isolated class as the corresponding rewritten import, and a prefixed spreadsheet must write a valid XLSX archive.
+
+#### Reproduction steps
+
+1. Generate `vendor-prefixed/` with Strauss 0.28.1 from the locked dependencies.
+2. Instantiate `WPFormVault\Vendor\PhpOffice\PhpSpreadsheet\Spreadsheet`.
+3. Save it with the prefixed `Writer\Xlsx`.
+4. Observe a `TypeError` from `Writer\ZipStream3::newZipStream()`.
+5. Inspect generated return types and observe the same root-namespace substitution for `ZipStream`, `Complex`, and `Matrix`.
+
+#### Evidence
+
+- Fatal type expected: `WPFormVault\Vendor\PhpOffice\PhpSpreadsheet\Writer\WPFormVault\Vendor\ZipStream`.
+- Actual returned type: `WPFormVault\Vendor\ZipStream\ZipStream`.
+- Generated `ZipStream0.php`, `ZipStream2.php`, `ZipStream3.php`, `Ods.php`, and MarkBaker files contain affected return types.
+- Frequency: every XLSX write using the first generated tree.
+
+#### Impact and scope
+
+All XLSX report generation would fail at runtime, and matrix/complex calculations could also fail when their affected return types execute. The build gate caught the defect before release; no production site or user data was affected.
+
+#### Cause analysis
+
+- **Proximate cause:** Strauss treated a short class name that matched its root namespace (`ZipStream`, `Complex`, or `Matrix`) as a namespace reference inside a return type.
+- **Root cause:** The selected prefixer's textual namespace replacement is ambiguous for namespace/class homonyms.
+- **Contributing factors:** Class loading checks do not execute method return-type contracts; only a real XLSX write exposed the failure.
+- **Why existing controls missed it:** The earlier verifier instantiated classes but did not create an XLSX file.
+
+#### Resolution
+
+- **Fix:** Added a deterministic, fail-closed post-prefix patch that expands only the affected `Complex`, `Matrix`, and `ZipStream` return types to their full isolated class names. The patch requires the reviewed match counts (42, 21, and 4 respectively) and the verifier rejects any remaining ambiguous return type.
+- **Data repair:** Not required.
+- **Backward compatibility:** Generated-code correction only; public WP FormVault APIs do not exist yet.
+
+#### Recurrence prevention
+
+- New invariant/guard: prefix generation is followed by a reviewed homonym-type correction and a scan proving no ambiguous generated return types remain.
+- Regression test: write and inspect a real XLSX archive using the prefixed classes.
+- Broader related tests: syntax-lint the generated tree and exercise Complex/Matrix return types.
+- Documentation/task/memory updates: dependency policy, task evidence, changelog, bug register, and project memory updated.
+- Monitoring/alert: dependency build fails before staging/package creation on any correction-count or smoke-test mismatch.
+
+#### Verification
+
+- Command/check: `powershell -NoProfile -ExecutionPolicy Bypass -File tools\run-dependency-build.ps1`
+- Result: clean PHP 8.1 build passed; 722 generated PHP files passed syntax checks; reviewed correction counts were enforced; Complex and Matrix return types executed successfully; a real prefixed XLSX file was written and its ZIP structure verified.
+- Verified by/date: Codex, 2026-07-27 13:07:28 UTC.
+
+#### Timeline
+
+- `2026-07-27 12:47:15 UTC` — Real XLSX smoke test reproduced the fatal and the generated-type pattern was traced.
+- `2026-07-27 13:07:28 UTC` — Fail-closed correction, generated-tree scan, type-contract tests, and real XLSX smoke test passed; defect closed.
+
+### BUG-0009 — Isolation verifier expected the unprefixed Composer loader class
+
+- **State:** CLOSED
+- **Severity:** S3 Low
+- **First seen:** 2026-07-27 12:36:10 UTC
+- **Last seen:** 2026-07-27 13:07:28 UTC
+- **Environment:** repository-owned PHP 8.1.34 / Composer 2.10.2 / Strauss 0.28.1 build
+- **Affected version/commit:** unreleased working tree
+- **Affected modules/tasks:** FND-002
+- **Reporter/owner:** Codex
+
+#### Observed behavior
+
+Strauss completed and generated a working autoloader, but `tools/verify-dependencies.php` rejected its return value because the test expected `Composer\Autoload\ClassLoader`.
+
+#### Expected behavior
+
+The verifier must recognize the intentionally prefixed `WPFormVault\Vendor\Composer\Autoload\ClassLoader` and then test its behavior.
+
+#### Reproduction steps
+
+1. Run `composer run build-dependencies` after a locked install.
+2. Observe Strauss complete and Action Scheduler stage successfully.
+3. Observe the verifier report that the prefixed autoloader did not return a Composer class loader.
+4. Inspect `vendor-prefixed/composer/ClassLoader.php` and observe its namespace is `WPFormVault\Vendor\Composer\Autoload`.
+
+#### Evidence
+
+- Generated `vendor-prefixed/autoload.php` returns its loader.
+- Generated `ClassLoader.php` declares `WPFormVault\Vendor\Composer\Autoload\ClassLoader`.
+- Frequency: every current isolation-verifier run.
+
+#### Impact and scope
+
+The build stopped at verification even though prefix generation and staging succeeded. No production artifact or user data was affected.
+
+#### Cause analysis
+
+- **Proximate cause:** The assertion checked the development Composer loader type rather than the prefixed loader type.
+- **Root cause:** The verifier encoded a pre-prefix class-name assumption at the exact boundary intended to rename Composer symbols.
+- **Contributing factors:** Both loaders expose the same behavioral methods but are deliberately different classes.
+- **Why existing controls missed it:** This was the first successfully generated Strauss autoloader.
+
+#### Resolution
+
+- **Fix:** Updated the verifier to assert `WPFormVault\Vendor\Composer\Autoload\ClassLoader` and retained behavioral `findFile()` and conflict-isolation checks.
+- **Data repair:** Not required.
+- **Backward compatibility:** Test-only correction.
+
+#### Recurrence prevention
+
+- New invariant/guard: assertions at namespace boundaries use the generated prefixed contract and verify behavior, not an unprefixed implementation identity.
+- Regression test: complete `composer run build-dependencies`.
+- Broader related tests: conflicting unprefixed classes loaded before scoped classes.
+- Documentation/task/memory updates: task evidence, changelog, bug register, and project memory updated.
+- Monitoring/alert: build remains fail-closed on isolation-test failure.
+
+#### Verification
+
+- Command/check: `powershell -NoProfile -ExecutionPolicy Bypass -File tools\run-dependency-build.ps1`
+- Result: the clean dependency build loaded the prefixed Composer loader, resolved isolated classes, and passed the unprefixed-class conflict fixture.
+- Verified by/date: Codex, 2026-07-27 13:07:28 UTC.
+
+#### Timeline
+
+- `2026-07-27 12:36:10 UTC` — Failure reproduced; generated loader namespace inspected; fix started.
+- `2026-07-27 13:07:28 UTC` — Correct prefixed-loader assertion and behavioral isolation checks passed; defect closed.
+
+### BUG-0008 — Strict Composer validation rejected the exact Action Scheduler constraint
+
+- **State:** CLOSED
+- **Severity:** S3 Low
+- **First seen:** 2026-07-27 12:29:59 UTC
+- **Last seen:** 2026-07-27 13:07:28 UTC
+- **Environment:** repository-owned PHP 8.1.34 / Composer 2.10.2 dependency build
+- **Affected version/commit:** unreleased working tree
+- **Affected modules/tasks:** FND-002
+- **Reporter/owner:** Codex
+
+#### Observed behavior
+
+`composer validate --strict` returned a non-zero result because the manifest used the exact runtime constraint `woocommerce/action-scheduler: 3.9.3`.
+
+#### Expected behavior
+
+The manifest must pass strict validation while the committed lock and verification tooling preserve the reviewed 3.9.3 runtime.
+
+#### Reproduction steps
+
+1. Generate the initial lock with `tools/run-dependency-build.ps1 -UpdateLock`.
+2. Allow the script to run `composer validate --strict`.
+3. Observe the exact-version-constraint warning and non-zero build result.
+
+#### Evidence
+
+- Composer warning: `exact version constraints (3.9.3) should be avoided if the package follows semantic versioning`.
+- Composer had already locked Action Scheduler 3.9.3.
+- Frequency: every strict validation with the initial manifest.
+
+#### Impact and scope
+
+The reproducible dependency build stopped before namespace prefixing and staging. No runtime package or user data was affected.
+
+#### Cause analysis
+
+- **Proximate cause:** The root manifest used an exact semantic-version constraint.
+- **Root cause:** The architecture policy conflated the allowed dependency line with the exact version committed in `composer.lock`.
+- **Contributing factors:** Action Scheduler 4.x must remain excluded because it raises the WordPress minimum.
+- **Why existing controls missed it:** Strict Composer validation was first introduced and executed in `FND-002`.
+
+#### Resolution
+
+- **Fix:** Change the root constraint to `~3.9.3`, which permits reviewed 3.9 patch releases but excludes 4.x; retain exact 3.9.3 verification in the current lock.
+- **Data repair:** Not required.
+- **Backward compatibility:** No selected runtime-version change.
+
+#### Recurrence prevention
+
+- New invariant/guard: semantic-version constraints define an allowed compatible line; `composer.lock` and build verification define the exact shipped version.
+- Regression test: `composer validate --strict` and exact installed-version check.
+- Broader related tests: Action Scheduler metadata/coexistence verification.
+- Documentation/task/memory updates: dependency policy, manifest rationale, task evidence, changelog, bug register, and project memory updated.
+- Monitoring/alert: the dependency build fails on strict validation warnings.
+
+#### Verification
+
+- Command/check: `powershell -NoProfile -ExecutionPolicy Bypass -File tools\run-dependency-build.ps1`
+- Result: `composer validate --strict` passed; the manifest permits only the reviewed 3.9 patch line and the lock/verifier preserved exact Action Scheduler 3.9.3.
+- Verified by/date: Codex, 2026-07-27 13:07:28 UTC.
+
+#### Timeline
+
+- `2026-07-27 12:29:59 UTC` — Strict-validation failure reproduced and fix started.
+- `2026-07-27 13:07:28 UTC` — Strict validation and exact locked-version verification passed; defect closed.
+
+### BUG-0007 — PhpSpreadsheet baseline was stale before first lock resolution
+
+- **State:** CLOSED
+- **Severity:** S3 Low
+- **First seen:** 2026-07-27 12:29:59 UTC
+- **Last seen:** 2026-07-27 13:07:28 UTC
+- **Environment:** repository-owned PHP 8.1.34 / Composer 2.10.2 dependency build and official upstream release review
+- **Affected version/commit:** unreleased working tree
+- **Affected modules/tasks:** ARCH-003, FND-002, EXPORT-001
+- **Reporter/owner:** Codex
+
+#### Observed behavior
+
+The policy called PhpSpreadsheet 5.7.0 the current/initial lock target, but Composer resolved 5.8.1 and upstream identifies 5.8.1 as the last release supporting PHP 8.1.
+
+#### Expected behavior
+
+The dependency policy and verifier must use the latest reviewed release compatible with WP FormVault's PHP 8.1 minimum.
+
+#### Reproduction steps
+
+1. Resolve `phpoffice/phpspreadsheet: ^5.7.0` with Composer platform PHP 8.1.0.
+2. Observe Composer lock PhpSpreadsheet 5.8.1.
+3. Open the official 5.8.1 release and confirm it is the last PHP 8.1-supporting version.
+
+#### Evidence
+
+- [PhpSpreadsheet 5.8.1 release](https://github.com/PHPOffice/PhpSpreadsheet/releases/tag/5.8.1): explicitly identifies the PHP 8.1 support boundary.
+- Initial Composer resolution locked `phpoffice/phpspreadsheet` 5.8.1.
+- Frequency: deterministic under the current package repository and platform constraint.
+
+#### Impact and scope
+
+The first verifier would have rejected the correct lock, and future `^5.7.0` updates could obscure the intentional PHP 8.1 minor-line boundary. No export code or user data exists yet.
+
+#### Cause analysis
+
+- **Proximate cause:** Upstream released 5.8.1 after the earlier 5.7.0 research snapshot.
+- **Root cause:** The pre-lock policy froze an “initial lock target” before Composer resolution and did not recheck immediately before implementation.
+- **Contributing factors:** PHP 8.1 is at the end of PhpSpreadsheet's supported line.
+- **Why existing controls missed it:** The repository had no manifest, lock, or reproducible PHP 8.1 resolver until `FND-002`.
+
+#### Resolution
+
+- **Fix:** Constrain PhpSpreadsheet to `~5.8.1`, lock/verify 5.8.1, and record it as the last PHP 8.1-compatible line.
+- **Data repair:** Not required.
+- **Backward compatibility:** Preserves PHP 8.1 and moves to a newer compatible patch/minor than the provisional target.
+
+#### Recurrence prevention
+
+- New invariant/guard: dependency baselines are provisional until resolved on the minimum platform; upstream freshness is checked immediately before lock updates.
+- Regression test: exact locked-version verification under Composer platform PHP 8.1.0.
+- Broader related tests: spreadsheet creation/write smoke test after isolation.
+- Documentation/task/memory updates: dependency policy, manifest, task evidence, changelog, bug register, and project memory updated.
+- Monitoring/alert: future PhpSpreadsheet minor upgrades require explicit PHP-minimum review.
+
+#### Verification
+
+- Command/check: `powershell -NoProfile -ExecutionPolicy Bypass -File tools\run-dependency-build.ps1`
+- Result: the PHP 8.1 build resolved, installed, audited, prefixed, and smoke-tested exact PhpSpreadsheet 5.8.1; the verifier enforces that lock.
+- Verified by/date: Codex, 2026-07-27 13:07:28 UTC.
+
+#### Timeline
+
+- `2026-07-27 12:29:59 UTC` — Initial lock resolved 5.8.1; upstream PHP-support boundary confirmed; fix started.
+- `2026-07-27 13:07:28 UTC` — Corrected policy, constraint, exact lock, prefixing, and XLSX smoke test passed; defect closed.
+
+### BUG-0006 — Dependency policy mislabeled Action Scheduler 3.9.3 as current
+
+- **State:** CLOSED
+- **Severity:** S3 Low
+- **First seen:** 2026-07-27 12:19:07 UTC
+- **Last seen:** 2026-07-27 12:21:16 UTC
+- **Environment:** architecture/dependency review against GitHub and Packagist upstream metadata
+- **Affected version/commit:** unreleased working tree
+- **Affected modules/tasks:** ARCH-002, ARCH-003, FND-002
+- **Reporter/owner:** Codex
+
+#### Observed behavior
+
+The dependency policy and decision rationale described Action Scheduler 3.9.3 as the current stable line. A fresh Packagist resolution check showed Action Scheduler 4.0.0 is the current upstream release.
+
+#### Expected behavior
+
+Dependency records must distinguish the current upstream release from the exact version selected for WP FormVault's approved compatibility floor.
+
+#### Reproduction steps
+
+1. Open the Action Scheduler GitHub latest release or Packagist package page.
+2. Observe release 4.0.0 dated 2026-06-16.
+3. Compare the policy's earlier “current stable line” wording for 3.9.3.
+4. Read 4.0.0 `readme.txt` and observe it requires WordPress 6.8, while selected 3.9.3 requires WordPress 6.5.
+
+#### Evidence
+
+- [Action Scheduler 4.0.0 release](https://github.com/woocommerce/action-scheduler/releases/tag/4.0.0): marked latest and requires WordPress 6.8.
+- [Action Scheduler package metadata](https://packagist.org/packages/woocommerce/action-scheduler): 4.0.0 is newer than 3.9.3.
+- Frequency: deterministic documentation error.
+
+#### Impact and scope
+
+The selected WordPress 6.5 + Action Scheduler 3.9.3 profile remains internally compatible and was explicitly approved. The error affected dependency lifecycle wording and could have led readers to infer WP FormVault used the latest upstream release. No runtime code or user data was affected.
+
+#### Cause analysis
+
+- **Proximate cause:** Initial research opened the 3.9.3 release directly and did not confirm the repository's latest release marker or current Packagist version.
+- **Root cause:** The dependency research checklist did not require two-source latest-version verification immediately before freezing a policy.
+- **Contributing factors:** The current 4.0.0 release raises the WordPress minimum to 6.8, while 3.9.3 remains the appropriate line for the selected 6.5 floor.
+- **Why existing controls missed it:** Compatibility verification checked internal document agreement, not freshness against upstream package metadata.
+
+#### Resolution
+
+- **Fix:** Relabeled 3.9.3 as the selected/latest WordPress-6.5-compatible line, recorded 4.0.0 and its WordPress 6.8/breaking-change boundary, and added an upstream freshness rule.
+- **Data repair:** Not required.
+- **Backward compatibility:** No version or platform change; wording/evidence correction only.
+
+#### Recurrence prevention
+
+- New invariant/guard: verify both the upstream latest release marker and Packagist current version immediately before dependency policy/lock changes.
+- Regression test: extend compatibility verification to require the documented current-versus-selected distinction.
+- Broader related tests: Composer resolution must prove the exact 3.9.3 lock and WordPress 6.5 metadata alignment.
+- Documentation/task/memory updates: dependency policy, task register, bug register, changelog, memory, and compatibility verifier updated.
+- Monitoring/alert: dependency update reviews must record research date and newer intentionally excluded releases.
+
+#### Verification
+
+- Command/check: `php tools/verify-compatibility.php`; `php tools/verify-foundation.php`; task-graph and diff checks.
+- Result: compatibility and foundation verification passed; 198-task/325-edge graph remained valid and acyclic; diff whitespace check passed.
+- Verified by/date: Codex, 2026-07-27 12:21:16 UTC.
+
+#### Timeline
+
+- `2026-07-27 12:19:07 UTC` — Packagist and GitHub latest-release check identified Action Scheduler 4.0.0; architecture task reopened.
+- `2026-07-27 12:21:16 UTC` — Current-versus-selected distinction documented and regression checks passed; defect closed.
 
 ### BUG-0004 — Local dependency build runtime lacks usable Composer and GD
 
-- **State:** BLOCKED
+- **State:** CLOSED
 - **Severity:** S2 Medium
 - **First seen:** 2026-07-27 11:58:53 UTC
-- **Last seen:** 2026-07-27 12:00:38 UTC
+- **Last seen:** 2026-07-27 13:07:28 UTC
 - **Environment:** local Windows host and `localdev_php_apache` container
 - **Affected version/commit:** unreleased working tree
 - **Affected modules/tasks:** ARCH-003, FND-002, EXPORT-001, FILES-003
@@ -80,7 +489,7 @@ The dependency build runtime must provide Composer 2.10+, 64-bit PHP compatible 
 
 #### Impact and scope
 
-`composer.json` could be written but its lock, platform resolution, security audit, prefixed runtime tree, and production artifact could not be verified. No WordPress runtime or user data is affected because dependencies have not been introduced.
+Before the fix, `composer.json` could be written but its lock, platform resolution, security audit, and prefixed runtime tree could not be verified. No WordPress runtime or user data was affected.
 
 #### Cause analysis
 
@@ -91,35 +500,37 @@ The dependency build runtime must provide Composer 2.10+, 64-bit PHP compatible 
 
 #### Resolution
 
-- **Fix:** Pending environment-owner choice: provision Composer 2.10+ and `ext-gd` in the local PHP image, or authorize a repository-owned reproducible build container with the complete extension set.
+- **Fix:** Added a repository-owned, digest-pinned PHP 8.1 dependency-build container with Composer 2.10.2 and the complete required extension set, plus a PowerShell launcher and fail-fast platform preflight. The shared local PHP image remains unchanged.
 - **Data repair:** Not required.
 - **Backward compatibility:** No product impact; build environment only.
 
 #### Recurrence prevention
 
 - New invariant/guard: dependency builds must run an automated PHP architecture, extension, Composer-version, and platform-resolution preflight.
-- Regression test: run the future dependency preflight and strict Composer validate/install/audit flow.
+- Regression test: run the dependency preflight and strict Composer validate/install/audit flow.
 - Broader related tests: generate and smoke-test the prefixed runtime tree on the declared minimum and current PHP versions.
-- Documentation/task/memory updates: dependency policy, task blocker, changelog, and memory updated.
+- Documentation/task/memory updates: dependency policy, task evidence/blocker table, changelog, bug register, README, and memory updated.
 - Monitoring/alert: CI/build must fail before packaging when any required extension or tool is absent.
 
 #### Verification
 
-- Command/check: pending environment correction.
-- Result: blocked; current reproduction still fails.
-- Verified by/date: not yet verified.
+- Command/check: `powershell -NoProfile -ExecutionPolicy Bypass -File tools\run-dependency-build.ps1`
+- Result: repository-owned PHP 8.1.34 was confirmed 64-bit with all declared extensions; Composer 2.10.2 passed platform validation, install, audit, isolation, syntax, and runtime smoke checks.
+- Verified by/date: Codex, 2026-07-27 13:07:28 UTC.
 
 #### Timeline
 
 - `2026-07-27 11:58:53 UTC` — Missing `ext-gd` and Composer identified during dependency preflight.
 - `2026-07-27 12:00:38 UTC` — Host Composer failure and current container identity reconfirmed; task blocked.
+- `2026-07-27 12:17:25 UTC` — Repository-owned build runtime selected; fix implementation started.
+- `2026-07-27 13:07:28 UTC` — Digest-pinned build environment and the complete clean dependency pipeline passed; defect closed.
 
-### BUG-0005 — Planned WordPress minimum conflicts with current Action Scheduler
+### BUG-0005 — Planned WordPress minimum conflicts with selected Action Scheduler
 
-- **State:** BLOCKED
+- **State:** CLOSED
 - **Severity:** S2 Medium
 - **First seen:** 2026-07-27 11:58:53 UTC
-- **Last seen:** 2026-07-27 11:58:53 UTC
+- **Last seen:** 2026-07-27 12:17:25 UTC
 - **Environment:** architecture/dependency review against official upstream release metadata
 - **Affected version/commit:** unreleased working tree
 - **Affected modules/tasks:** ARCH-002, ARCH-003, FND-002, QUEUE-001
@@ -127,7 +538,7 @@ The dependency build runtime must provide Composer 2.10+, 64-bit PHP compatible 
 
 #### Observed behavior
 
-The WP FormVault plan declares WordPress 6.2+ while current Action Scheduler 3.9.3 declares WordPress 6.5+.
+The WP FormVault plan declared WordPress 6.2+ while the selected Action Scheduler 3.9.3 line declares WordPress 6.5+.
 
 #### Expected behavior
 
@@ -159,7 +570,7 @@ Bundling 3.9.3 while advertising WordPress 6.2 could load unsupported dependency
 
 #### Resolution
 
-- **Fix:** Pending product-owner selection: WordPress 6.5 + Action Scheduler 3.9.3 (recommended current line), or WordPress 6.2 + Action Scheduler 3.7.4 with a documented maintenance/security exception.
+- **Fix:** Option A selected by the user on 2026-07-27: WP FormVault now requires WordPress 6.5 and uses Action Scheduler 3.9.3, the latest compatible line for that floor. The plan, plugin metadata/constants, dependency policy, task register, memory, changelog, and compatibility verifier were synchronized.
 - **Data repair:** Not required.
 - **Backward compatibility:** Option A drops planned WordPress 6.2–6.4 support; Option B retains it but constrains dependency upgrades and APIs.
 
@@ -173,15 +584,17 @@ Bundling 3.9.3 while advertising WordPress 6.2 could load unsupported dependency
 
 #### Verification
 
-- Command/check: pending product decision and synchronized implementation.
-- Result: blocked; mismatch remains intentionally visible.
-- Verified by/date: not yet verified.
+- Command/check: `php tools/verify-compatibility.php`; `php tools/verify-foundation.php`; `powershell -NoProfile -ExecutionPolicy Bypass -File tools/verify-task-graph.ps1`; `git diff --check`.
+- Result: compatibility and foundation verification passed in PHP 8.2.31; task graph passed with 198 tasks and 325 acyclic dependency edges; diff whitespace check passed.
+- Verified by/date: Codex, 2026-07-27 12:17:25 UTC.
 
 #### Timeline
 
 - `2026-07-27 11:58:53 UTC` — Official 3.9.3 and 3.7.4 requirements compared; product decision opened.
+- `2026-07-27` — User selected option A; compatibility synchronization started.
+- `2026-07-27 12:17:25 UTC` — All active compatibility sources synchronized and regression checks passed; defect closed.
 
-## Resolved bugs
+## Earlier resolved bugs
 
 ### BUG-0001 — Circular dependencies blocked task execution order
 

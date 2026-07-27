@@ -3,7 +3,7 @@
  * Plugin Name:       WP FormVault
  * Description:       Centralized form-submission reporting, scheduling, workflow, export, and secure delivery for supported WordPress form plugins.
  * Version:           0.0.0-dev
- * Requires at least: 6.2
+ * Requires at least: 6.5
  * Requires PHP:      8.1
  * Text Domain:       wp-formvault
  * Domain Path:       /languages
@@ -18,7 +18,7 @@ if ( ! defined( 'WPFV_VERSION' ) ) {
 }
 
 if ( ! defined( 'WPFV_MINIMUM_WORDPRESS_VERSION' ) ) {
-	define( 'WPFV_MINIMUM_WORDPRESS_VERSION', '6.2' );
+	define( 'WPFV_MINIMUM_WORDPRESS_VERSION', '6.5' );
 }
 
 if ( ! defined( 'WPFV_MINIMUM_PHP_VERSION' ) ) {

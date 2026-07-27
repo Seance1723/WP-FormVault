@@ -2,7 +2,7 @@
 ## Upgraded Implementation Plan (v2 — Hardened)
 
 **Document type:** Technical implementation plan
-**Target platform:** WordPress 6.2+ / PHP 8.1+ / MySQL 5.7+ or MariaDB 10.4+
+**Target platform:** WordPress 6.5+ / PHP 8.1+ (64-bit) / MySQL 5.7+ or MariaDB 10.4+
 **Primary goal:** WP FormVault is a universal form-submission management, reporting, scheduling, workflow, and Excel-export layer that sits on top of existing WordPress form plugins without replacing them.
 
 > This version supersedes the original plan. It preserves the original scope and intent, but re-analyzes the core logic, hardens security, resolves internal contradictions, and fills structural gaps. Every materially changed or added area is marked **[HARDENED]**, **[FIXED]**, or **[NEW]** so the deltas are auditable.

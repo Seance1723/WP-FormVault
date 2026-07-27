@@ -1,7 +1,7 @@
 # WP FormVault Project Memory
 
 Last updated: 2026-07-27  
-Memory status: Current for the verified foundation scaffold and blocked dependency-architecture baseline.
+Memory status: Current for the verified foundation scaffold and selected dependency-architecture baseline.
 
 ## How to use this memory
 
@@ -43,6 +43,8 @@ Before claiming a feature is implemented, supported, secure, tested, or producti
 4. Verify the evidence applies to the current source state and environment.
 5. State limitations or missing evidence plainly.
 
+Automated documentation checks must assert stable product, platform, and dependency contracts. They must not depend on mutable task states or lifecycle prose unless that lifecycle state is the contract being tested (`BUG-0011`).
+
 Never:
 
 - Treat a plan item as implemented.
@@ -55,7 +57,7 @@ Never:
 
 ## Current project state
 
-**Current:** The workspace contains the canonical plan/control documents, a verified WordPress plugin foundation scaffold, and a dependency/isolation/packaging policy. The scaffold defines plugin metadata/constants, registers the internal namespace autoloader, and tracks the planned module directories. It does not yet start product services. There is no Composer manifest, lock file, installed or prefixed dependency tree, service container, activation lifecycle, database migration, automated test framework, build artifact, or release.
+**Current:** The workspace contains the canonical plan/control documents, a verified WordPress plugin foundation scaffold, and the implemented Composer dependency build/isolation layer. The scaffold defines plugin metadata/constants, registers the internal namespace autoloader, and tracks the planned module directories. It does not yet start product services or load third-party services from the plugin bootstrap. There is no service container, activation lifecycle, database migration, PHPUnit/CI framework, production ZIP, or release.
 
 **Current completed controls:**
 
@@ -67,12 +69,15 @@ Never:
 - `wp-formvault.php` provides the guarded WordPress entry boundary and foundation constants.
 - `includes/Autoloader.php` provides validated, idempotent `WPFormVault\*` class resolution.
 - `docs/architecture/dependency-policy.md` records verified upstream constraints, namespace isolation, Action Scheduler coexistence, and reproducible production packaging requirements.
+- `composer.json` and `composer.lock` define the PHP 8.1-compatible runtime graph and build-only Strauss tooling.
+- `tools/run-dependency-build.ps1` builds through the digest-pinned PHP 8.1.34 / Composer 2.10.2 image, without modifying the shared local WordPress container.
+- The lock-only dependency build validates/audits the lock, verifies platform requirements, generates the isolated tree, stages Action Scheduler, generates notices, lints 722 PHP files, and passes conflict plus XLSX/ZIP/Complex/Matrix runtime tests.
 - `tools/verify-foundation.php` passes in the local PHP 8.2.31 container.
 - `tools/verify-task-graph.ps1` validates all 198 tasks and 325 dependency edges with no missing references or cycles.
 
-**Current blockers:** `ARCH-003` requires a user decision between WordPress 6.5 + Action Scheduler 3.9.3 (recommended) and the original WordPress 6.2 + Action Scheduler 3.7.4 baseline. `FND-002` also requires a usable Composer 2.10+ runtime and `ext-gd`; see `BUG-0004` and `BUG-0005`.
+**Current blockers:** None confirmed for the next architecture task. `BUG-0004` through `BUG-0011` are closed with reproducible evidence.
 
-**Recommended next action:** Select the compatibility profile, synchronize `ARCH-002`/`ARCH-003`, then repair the local build prerequisites and implement `FND-002`.
+**Recommended next task:** `ARCH-004` — define service-container composition and module dependency direction before `FND-003`.
 
 ## Project identity
 
@@ -92,6 +97,18 @@ Never:
 
 The example table `wp_wpfv_submissions` means `$wpdb->prefix . 'wpfv_submissions'`; never hard-code `wp_`, especially on multisite.
 
+## Supported platform baseline
+
+| Component | Minimum | Status |
+|---|---:|---|
+| WordPress | 6.5 | Required/frozen by user decision on 2026-07-27 |
+| PHP | 8.1, 64-bit | Required/frozen; exact maximum/current matrix remains a CI task |
+| MySQL | 5.7 | Required/frozen; verify in CI |
+| MariaDB | 10.4 | Required/frozen; verify in CI |
+| Action Scheduler | 3.9.3 | Required dependency baseline |
+
+The WordPress minimum intentionally changed from the original 6.2 plan baseline so the bundled Action Scheduler 3.9.3 dependency is supported.
+
 ## Current foundation implementation
 
 - `wp-formvault.php` is the only WordPress plugin entry file.
@@ -99,25 +116,32 @@ The example table `wp_wpfv_submissions` means `$wpdb->prefix . 'wpfv_submissions
 - The entry file declares the WordPress/PHP minimums and identity/path constants, then registers the internal autoloader.
 - The entry file intentionally does not instantiate a plugin/service container or register product hooks; that belongs to `FND-003`.
 - `WPFormVault\Autoloader` maps namespace-relative class names into `/includes`, validates every namespace segment, ignores unrelated/unsafe names, and registers only once.
-- Composer dependencies and Composer autoloading have not been introduced; that remains `ARCH-003`/`FND-002`.
+- Composer manifest/lock and generated dependency tooling are implemented. Loading the isolated runtime autoloader and composing services remains `FND-003`; integrating Action Scheduler runtime hooks remains `QUEUE-001`.
 - Module directories mirror the hardened plan: Core, Adapters, Sync, Submissions, Workflow, Reports, Scheduling, Email, Downloads, Privacy, Notifications, Audit, Rest, Health, and Admin, plus assets, languages, and templates.
 - The standalone verifier uses only non-production WordPress stubs and must not be loaded by WordPress.
 
 ## Dependency and packaging baseline
 
-**Current architecture decision; not yet implemented:**
+**Current implemented dependency baseline:**
 
-- PhpSpreadsheet uses root constraint `^5.7.0`; the initial lock target is 5.7.0.
+- PhpSpreadsheet uses root constraint `~5.8.1`; 5.8.1 is the last upstream release line supporting the PHP 8.1 minimum.
 - ZipStream uses root constraint `~3.0.2` while PHP 8.1 is supported because newer 3.x minors raise the PHP minimum.
+- Action Scheduler is fixed at 3.9.3 and sets the WordPress minimum to 6.5.
+- Action Scheduler 4.0.0 is the current upstream release but requires WordPress 6.8 and contains breaking behavior changes; it is intentionally excluded from the selected profile.
 - Composer resolves against platform PHP 8.1.0, the lock file is committed, stable packages are required, and production never updates or downloads dependencies.
 - Generic Composer packages and their production transitive closure are rewritten under `WPFormVault\Vendor\` into `vendor-prefixed/` using the build-only Strauss 0.28.1 tool.
+- The current Strauss/lock combination requires a count-locked post-prefix correction for `Complex`, `Matrix`, and `ZipStream` return types whose class names equal their root namespaces; real runtime smoke tests guard the correction (`BUG-0010`).
 - Action Scheduler is deliberately not prefixed. It is packaged under `libraries/action-scheduler/`, loaded before `plugins_loaded` priority 0, and called only after its initialization boundary.
 - Production artifacts include the isolated runtime tree, the selected Action Scheduler library, and dependency/license notices; they exclude raw generic `vendor/`, development packages, and the prefixing tool.
 - PHP must be 64-bit and provide `ctype`, `dom`, `fileinfo`, `filter`, `gd`, `iconv`, `libxml`, `mbstring`, `simplexml`, `xml`, `xmlreader`, `xmlwriter`, `zip`, and `zlib`.
 
-**Current local evidence:** `localdev_php_apache` has 64-bit PHP 8.2.31 and all listed extensions except `gd`. It has no Composer executable. The host Composer launcher cannot run because host PHP is not on `PATH`.
+**Current locked runtime versions:** Composer PCRE 3.4.0, ZipStream 3.0.2, MarkBaker Complex 3.0.2, MarkBaker Matrix 3.0.1, PhpSpreadsheet 5.8.1, PSR Simple Cache 2.0.0, and Action Scheduler 3.9.3. Strauss 0.28.1 and its closure are build-only.
+
+**Current local evidence:** The shared `localdev_php_apache` container still lacks `gd` and Composer, but it is no longer a build blocker. The repository-owned image provides 64-bit PHP 8.1.34, Composer 2.10.2, and every required extension. Generated `vendor/`, `vendor-prefixed/`, and staged Action Scheduler directories are ignored and must be regenerated from the committed lock; they are not release artifacts.
 
 See `docs/architecture/dependency-policy.md` for the complete policy and evidence links.
+
+Manifest constraints select reviewed compatible lines (`~5.8.1`, `~3.0.2`, and `~3.9.3`). `composer.lock` and build verification define the exact shipped versions; no production installation performs dependency updates.
 
 ## Product concept
 
@@ -377,8 +401,6 @@ The hardened plan contains eleven phases:
 
 These are deliberately not guessed:
 
-- WordPress/Action Scheduler compatibility profile: WordPress 6.5 + Action Scheduler 3.9.3 (recommended), or WordPress 6.2 + Action Scheduler 3.7.4.
-- Exact locked transitive dependency versions, pending a usable Composer build runtime.
 - CI provider and precise WordPress/PHP/database test matrix beyond minimum compatibility.
 - Advanced CF7 DB versions/products included in the initial adapter scope.
 - Exact custom recurrence grammar and safety limits.
@@ -412,9 +434,17 @@ Generic runtime dependencies will be generated under `WPFormVault\Vendor\` and s
 
 Action Scheduler remains unprefixed because it intentionally arbitrates one active version across the WordPress site. WP FormVault must load its copy early, defer API calls until initialization, feature-detect optional APIs, and tolerate another compatible registered version winning.
 
-### 2026-07-27 — Dependency compatibility decision is blocked, not guessed
+### 2026-07-27 — WordPress 6.5 and Action Scheduler 3.9.3 selected
 
-Current Action Scheduler 3.9.3 declares WordPress 6.5+, while the original WP FormVault plan declares WordPress 6.2+. Action Scheduler 3.7.4 is the verified legacy line declaring WordPress 6.2 support. Changing the WordPress support floor is a product compatibility decision, so implementation remains blocked until the user selects a profile.
+The user selected the approved compatibility profile: WordPress 6.5+ and Action Scheduler 3.9.3. This replaces the original WordPress 6.2 baseline. PHP remains 8.1+ on 64-bit architecture, with MySQL 5.7+ or MariaDB 10.4+.
+
+Action Scheduler 4.0.0 was subsequently confirmed as the current upstream release, requiring WordPress 6.8 and adding breaking uniqueness/retention behavior. Version 3.9.3 remains intentionally pinned as the latest line compatible with the user-selected WordPress 6.5 floor. It must not be described as the current upstream release.
+
+### 2026-07-27 — Repository-owned dependency build
+
+WP FormVault resolves and verifies dependencies in a digest-pinned PHP 8.1.34 / Composer 2.10.2 image rather than changing the shared WordPress container. Normal builds install only from the committed lock; lock updates require the explicit `-UpdateLock` switch.
+
+The current lock has seven runtime packages. Generic libraries are isolated under `WPFormVault\Vendor`; Action Scheduler 3.9.3 is staged unprefixed. The build fails on missing extensions, invalid/stale locks, advisories, platform mismatches, generated syntax errors, unprefixed conflicts, wrong package versions, ambiguous homonym return types, or invalid XLSX output.
 
 ## Memory maintenance checklist
 
