@@ -40,6 +40,9 @@ All material project changes are recorded here. This file follows the spirit of 
 - Added the explicit request/site-scoped service container with immutable values, lazy shared services, transient factories, aliases, runtime type enforcement, circular/missing/duplicate checks, and irreversible definition freeze. (`FND-003`)
 - Added packaged dependency loading, platform compatibility and pending-schema gates, sanitized administrator diagnostics, and the idempotent `Core\Plugin` composition root. (`FND-003`)
 - Added deterministic bootstrap verification covering dependency and gate order, safe failure states, container negative paths, hook idempotency, injected substitutes, and independent multisite graphs. (`FND-003`)
+- Added the accepted engineering-quality policy covering WordPress coding standards, PHPCompatibilityWP `8.1-`, PHPStan level 8 without a generated baseline, deterministic/redacted test conventions, and a seven-area test layout. (`ARCH-005`)
+- Added a machine-readable nine-lane CI contract with exact minimum MySQL/MariaDB coverage, the current supported PHP band, latest stable WordPress, multisite, dependency-build, nightly WordPress-trunk, and release-candidate performance gates. (`ARCH-005`)
+- Added an automated quality-policy verifier that detects drift in platform floors, coding rulesets, analysis strictness, test isolation, lane identity, and blocking status without claiming that the pending `QA-001` tooling exists. (`ARCH-005`)
 
 ### Changed
 
@@ -53,6 +56,7 @@ All material project changes are recorded here. This file follows the spirit of 
 - Replaced reliance on the incomplete shared PHP environment with a repository-owned, digest-pinned dependency build and completed the first audited PHP 8.1 lock. (`FND-002`, `BUG-0004`)
 - Established `WPFormVault\Core\Plugin` as the sole composition root and `WPFormVault\Core\ServiceContainer` as the explicit, frozen, request/site-scoped container contract required by `FND-003`. (`ARCH-004`)
 - Advanced the plugin entry boundary to load packaged dependencies and run the base composition root; production startup intentionally stops at `blocked_schema` until the migration task replaces `PendingSchemaGate`. (`FND-003`)
+- Expanded the hardened plan and repository orientation with the accepted quality/CI contract, a dated WordPress 7.0.2 and PHP support reference snapshot, and explicit separation between policy completion (`ARCH-005`) and tool/workflow implementation (`QA-001`). (`ARCH-005`)
 
 ### Deprecated
 
@@ -77,6 +81,7 @@ All material project changes are recorded here. This file follows the spirit of 
 - Decoupled the compatibility verifier from mutable policy lifecycle wording while retaining enforcement of the selected platform and dependency boundaries. (`ARCH-002`, `BUG-0011`)
 - Corrected the WordPress `add_action()` test stubs to accept deferred callback strings, matching WordPress behavior and allowing Action Scheduler's early version-registration callback to load. (`BUG-0012`)
 - Corrected the final dependency-build verification window after measuring a 305.9-second clean Windows bind-mount run; documented a 420-second minimum and project-container inspection after interruption. (`BUG-0013`)
+- Kept the frozen compatibility-memory rows separate from dated rolling CI reference data after the compatibility verifier caught documentation drift. (`ARCH-005`, `BUG-0014`)
 
 ### Security
 

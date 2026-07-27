@@ -1009,6 +1009,18 @@ Unauthorized admin access; capability bypass; **AccessScope leakage across every
 
 Fresh install; **upgrade/migration** across schema versions; **uninstall with and without "delete data"**; multisite new-site provisioning; capability matrix; i18n string coverage; basic accessibility (keyboard nav, labels, contrast) on admin screens.
 
+### 35.7 Engineering quality and CI contract **[NEW]**
+
+The authoritative engineering-quality contract is `docs/architecture/quality-policy.json`; the rationale and operating rules are in `docs/architecture/engineering-quality-and-ci-policy.md`. Policy definition is owned by `ARCH-005`; installation of PHPUnit, PHPCS/WPCS, PHPCompatibilityWP, PHPStan, the WordPress test harness, and hosted CI workflows remains `QA-001`.
+
+- First-party PHP must pass `WordPress-Core`, `WordPress-Docs`, `WordPress-Extra`, and `PHPCompatibilityWP` with `testVersion` `8.1-`.
+- Runtime PHP starts at PHPStan level 8 with WordPress and Action Scheduler stubs, unmatched ignores reported, and no generated baseline.
+- Tests are separated into Unit, Integration, Functional, Security, Performance, Support, and synthetic/redacted Fixtures. Unit tests do not bootstrap WordPress; integration tests use dedicated ephemeral databases.
+- Blocking pull-request coverage includes quality checks on minimum and latest supported PHP, exact minimum WordPress/PHP lanes on both MySQL and MariaDB, the full currently supported PHP band on latest stable WordPress, a current multisite lane, and the locked dependency build.
+- WordPress trunk runs nightly as forward-compatibility evidence. A failure must be recorded or linked in `BUGS.md` before release even though the lane is informational.
+- Rolling targets resolve to exact versions at job start and write those versions to durable logs. Missing, skipped, cancelled, or unresolved blocking lanes fail the release gate.
+- PHP 8.1 remains a blocking legacy-compatibility lane while it is advertised, even though upstream support has ended. Removing it is a product compatibility decision, not an incidental tooling update.
+
 ---
 
 ## 36. Acceptance Criteria **[HARDENED]**

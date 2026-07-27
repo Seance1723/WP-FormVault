@@ -45,6 +45,74 @@ This is the mandatory record for defects found during development, testing, depl
 
 Records are ordered by discovery recency. The `State` field is authoritative.
 
+### BUG-0014 — Quality snapshot changed a frozen compatibility-memory contract
+
+- **State:** CLOSED
+- **Severity:** S3 Low
+- **First seen:** 2026-07-27 15:13:20 UTC
+- **Last seen:** 2026-07-27 15:15:46 UTC
+- **Environment:** Windows workspace / `localdev_php_apache` PHP 8.2.31 container
+- **Affected version/commit:** unreleased working tree
+- **Affected modules/tasks:** `ARCH-002`, `ARCH-005`
+- **Reporter/owner:** Codex
+
+#### Observed behavior
+
+The repository regression sequence stopped in `tools/verify-compatibility.php` because the frozen WordPress 6.5 row in `MEMORY.md` had been extended with a dated latest-WordPress note.
+
+#### Expected behavior
+
+The selected minimum-platform row must remain byte-for-byte compatible with the stable contract enforced by the compatibility verifier. Dated rolling-version research belongs in the engineering-quality snapshot, not in the frozen minimum row.
+
+#### Reproduction steps
+
+1. Extend the `MEMORY.md` WordPress 6.5 minimum row with the current WordPress release.
+2. Run `php tools/verify-compatibility.php` in the mounted PHP container.
+3. Observe exit code 1 and the missing frozen memory-fragment message.
+
+#### Evidence
+
+- Sanitized log/error: `Compatibility source 'memory' is missing: | WordPress | 6.5 | Required/frozen by user decision on 2026-07-27 |`
+- Test name/result: compatibility verifier failed before the remaining regression checks ran.
+- Screenshot/artifact: not required.
+- Frequency: deterministic.
+
+#### Impact and scope
+
+No runtime code or user data is affected. The documentation-only drift invalidates the compatibility regression gate and prevents `ARCH-005` completion until corrected.
+
+#### Cause analysis
+
+- **Proximate cause:** A current-release note was appended to the exact frozen compatibility row.
+- **Root cause:** Minimum product compatibility and rolling upstream reference data were combined in one field despite having different change lifecycles.
+- **Contributing factors:** The quality-policy snapshot and the supported-platform table are adjacent concepts in project memory.
+- **Why existing controls missed it:** The focused quality-policy verifier passed; the broader compatibility verifier had not yet run against the synchronized memory update.
+
+#### Resolution
+
+- **Fix:** Restore the exact frozen WordPress row, keep the PHP minimum row free of rolling data, and retain dated upstream/current-lane facts only in the separate engineering-quality section.
+- **Data repair:** Not required.
+- **Backward compatibility:** No impact.
+
+#### Recurrence prevention
+
+- New invariant/guard: keep immutable advertised minimums separate from dated or rolling CI reference data.
+- Regression test: `php tools/verify-compatibility.php`.
+- Broader related tests: quality-policy, foundation, architecture, bootstrap, dependency, and task-graph verifiers.
+- Documentation/task/memory updates: bug register, changelog, and `ARCH-005` evidence.
+- Monitoring/alert: non-zero compatibility-verifier exit remains the failure signal.
+
+#### Verification
+
+- Command/check: Run the foundation, compatibility, architecture, bootstrap, quality-policy, and dependency verifiers sequentially in `wp-formvault-dependency-build:php8.1-composer2.10`; run the PowerShell task-graph verifier.
+- Result: all PHP verifiers passed under PHP 8.1.34 with the required extensions; the task graph passed with 198 tasks, 325 edges, no missing references, and no cycles.
+- Verified by/date: Codex, 2026-07-27 15:15:46 UTC.
+
+#### Timeline
+
+- `2026-07-27 15:13:20 UTC` — Full regression run detected the stable-memory contract drift.
+- `2026-07-27 15:15:46 UTC` — Frozen/current facts were separated and the complete regression set passed.
+
 ### BUG-0013 — Clean dependency verification exceeded the command time limit
 
 - **State:** CLOSED

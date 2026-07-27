@@ -1,7 +1,7 @@
 # WP FormVault Project Memory
 
 Last updated: 2026-07-27  
-Memory status: Current for the verified foundation scaffold, dependency baseline, implemented base container/bootstrap, and enforced module architecture.
+Memory status: Current for the verified foundation scaffold, dependency baseline, implemented base container/bootstrap, enforced module architecture, and accepted engineering-quality/CI policy.
 
 ## How to use this memory
 
@@ -57,7 +57,7 @@ Never:
 
 ## Current project state
 
-**Current:** The workspace contains the canonical plan/control documents, a verified WordPress plugin foundation, the implemented Composer dependency build/isolation layer, the explicit base service container, a fail-closed composition root, and an enforceable module-boundary contract. The bootstrap loads the isolated dependency tree, registers the bundled Action Scheduler loader without early API calls, verifies runtime compatibility, and intentionally stops at the pending schema gate. No schema-dependent product hook registrar starts. There is no activation lifecycle, database migration/schema, product queue integration, PHPUnit/CI framework, production ZIP, or release.
+**Current:** The workspace contains the canonical plan/control documents, a verified WordPress plugin foundation, the implemented Composer dependency build/isolation layer, the explicit base service container, a fail-closed composition root, an enforceable module-boundary contract, and an accepted engineering-quality/CI policy. The bootstrap loads the isolated dependency tree, registers the bundled Action Scheduler loader without early API calls, verifies runtime compatibility, and intentionally stops at the pending schema gate. No schema-dependent product hook registrar starts. There is no activation lifecycle, database migration/schema, product queue integration, installed PHPUnit/PHPCS/PHPStan framework, hosted CI workflow, production ZIP, or release.
 
 **Current completed controls:**
 
@@ -76,12 +76,13 @@ Never:
 - `docs/architecture/module-boundaries.json` records the 15-module/63-edge inward dependency graph; `tools/verify-architecture.php` validates that graph and current PHP imports.
 - `includes/Core/ServiceContainer.php` implements explicit values, lazy shared factories, transient factories, aliases, type checks, circular/missing/duplicate detection, site identity, and immutable freeze.
 - `includes/Core/Plugin.php` implements the idempotent composition root and ordered dependency, compatibility, and schema gates; `tools/verify-bootstrap.php` exercises its positive and negative paths under PHP 8.1.
+- `docs/architecture/engineering-quality-and-ci-policy.md` and `quality-policy.json` define the accepted coding rules, static-analysis floor, test taxonomy, and nine-lane CI matrix; `tools/verify-quality-policy.php` validates stable policy contracts without pretending the pending QA toolchain is installed.
 - `tools/verify-foundation.php` passes in the local PHP 8.2.31 container.
 - `tools/verify-task-graph.ps1` validates all 198 tasks and 325 dependency edges with no missing references or cycles.
 
-**Current blockers:** None confirmed for the next architecture/tooling task. The production root's `blocked_schema` state is intentional until `DB-002`; it is not evidence of a working database migration. `BUG-0004` through `BUG-0013` are closed with reproducible evidence.
+**Current blockers:** None confirmed for `QA-001`. The production root's `blocked_schema` state is intentional until `DB-002`; it is not evidence of a working database migration. `BUG-0004` through `BUG-0013` are closed with reproducible evidence.
 
-**Recommended next task:** `ARCH-005` — define coding standards, static analysis, test layout, and the CI matrix before expanding runtime modules.
+**Recommended next task:** `QA-001` — install and configure the accepted PHPUnit, WordPress integration, PHPCS/WPCS, PHPCompatibilityWP, PHPStan, and hosted-CI quality gates before expanding runtime modules.
 
 ## Project identity
 
@@ -106,7 +107,7 @@ The example table `wp_wpfv_submissions` means `$wpdb->prefix . 'wpfv_submissions
 | Component | Minimum | Status |
 |---|---:|---|
 | WordPress | 6.5 | Required/frozen by user decision on 2026-07-27 |
-| PHP | 8.1, 64-bit | Required/frozen; exact maximum/current matrix remains a CI task |
+| PHP | 8.1, 64-bit | Required/frozen; CI execution remains `QA-001` |
 | MySQL | 5.7 | Required/frozen; verify in CI |
 | MariaDB | 10.4 | Required/frozen; verify in CI |
 | Action Scheduler | 3.9.3 | Required dependency baseline |
@@ -140,6 +141,20 @@ The WordPress minimum intentionally changed from the original 6.2 plan baseline 
 - `tools/verify-bootstrap.php` proves gate order, dependency loading, sanitized diagnostics, constructor-injected substitutes, hook idempotency, container failure modes, and independent site graphs.
 
 The accepted graph contains 15 modules and 63 explicitly allowed dependencies. Omitted edges are forbidden; being acyclic alone does not authorize a dependency.
+
+## Engineering quality and CI baseline
+
+**Current accepted policy; tooling remains planned under `QA-001`:**
+
+- PHP_CodeSniffer applies `WordPress-Core`, `WordPress-Docs`, `WordPress-Extra`, and `PHPCompatibilityWP` with the PHP range `8.1-` to first-party PHP.
+- PHPStan analyzes `wp-formvault.php` and `includes/` at level 8 with WordPress/Action Scheduler stubs, unmatched ignores reported, and no generated baseline.
+- The planned test tree separates Unit, Integration, Functional, Security, Performance, Support, and synthetic/redacted Fixtures. Unit tests do not load WordPress; integration tests use dedicated ephemeral databases.
+- The accepted matrix has nine lanes, eight blocking: minimum/latest quality, exact WordPress 6.5.0 + PHP 8.1 on MySQL 5.7 and MariaDB 10.4, current WordPress across the upstream-supported PHP band, current MariaDB multisite, minimum dependency build, nightly WordPress trunk, and release-candidate performance.
+- Rolling labels resolve at job start and the exact WordPress/PHP/database/tool versions must appear in durable logs. Missing, skipped, cancelled, or unresolved blocking lanes count as failures.
+- The 2026-07-27 upstream snapshot records WordPress 7.0.2 as latest stable, PHP 8.2–8.5 as supported, PHP 8.1 as end-of-life legacy product coverage, and PHPUnit 10 as the common PHP-8.1-compatible major.
+- `tools/verify-quality-policy.php` verifies the policy contract only. Until `QA-001` installs and runs the tools/workflows, do not claim the code passes PHPCS, PHPStan, PHPUnit, WordPress integration, or hosted CI.
+
+See `docs/architecture/engineering-quality-and-ci-policy.md` for rationale and `docs/architecture/quality-policy.json` for the authoritative machine-readable matrix.
 
 ## Dependency and packaging baseline
 

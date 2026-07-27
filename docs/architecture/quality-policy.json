@@ -1,0 +1,250 @@
+{
+  "schema_version": 1,
+  "owning_task": "ARCH-005",
+  "implementation_task": "QA-001",
+  "status": "policy_accepted_tooling_not_implemented",
+  "researched_on": "2026-07-27",
+  "reference_snapshot": {
+    "wordpress_latest_stable": "7.0.2",
+    "php_currently_supported": [
+      "8.2",
+      "8.3",
+      "8.4",
+      "8.5"
+    ],
+    "php_plugin_legacy_coverage": [
+      "8.1"
+    ],
+    "phpunit_php_8_1_compatible_major": 10
+  },
+  "platform_contract": {
+    "wordpress_minimum": "6.5",
+    "php_minimum": "8.1",
+    "php_64_bit_required": true,
+    "mysql_minimum": "5.7",
+    "mariadb_minimum": "10.4",
+    "rolling_targets_resolve_at_run": true,
+    "rolling_resolution_evidence_required": true
+  },
+  "coding_standard": {
+    "engine": "PHP_CodeSniffer",
+    "rulesets": [
+      "WordPress-Core",
+      "WordPress-Docs",
+      "WordPress-Extra",
+      "PHPCompatibilityWP"
+    ],
+    "php_compatibility_test_version": "8.1-",
+    "scan_paths": [
+      "wp-formvault.php",
+      "includes",
+      "tools",
+      "tests"
+    ],
+    "exclude_paths": [
+      "vendor",
+      "vendor-prefixed",
+      "libraries",
+      "build",
+      "dist"
+    ],
+    "new_errors_allowed": false,
+    "inline_suppression_requires_reason": true
+  },
+  "static_analysis": {
+    "engine": "PHPStan",
+    "level": 8,
+    "scan_paths": [
+      "wp-formvault.php",
+      "includes"
+    ],
+    "stub_domains": [
+      "WordPress",
+      "Action Scheduler"
+    ],
+    "generated_and_third_party_excluded": true,
+    "baseline_policy": "forbidden",
+    "unmatched_ignores_reported": true
+  },
+  "test_policy": {
+    "runner": "PHPUnit",
+    "runner_major_for_all_php_lanes": 10,
+    "production_data_forbidden": true,
+    "network_calls_default": "forbidden",
+    "clock_and_randomness": "inject_or_freeze",
+    "database_isolation": "dedicated_ephemeral_database",
+    "layout": [
+      {
+        "path": "tests/Unit",
+        "wordpress_bootstrap": false,
+        "purpose": "Pure domain and utility behavior."
+      },
+      {
+        "path": "tests/Integration",
+        "wordpress_bootstrap": true,
+        "purpose": "WordPress, database, queue, adapter, mail, filesystem, and object-cache boundaries."
+      },
+      {
+        "path": "tests/Functional",
+        "wordpress_bootstrap": true,
+        "purpose": "Complete user-visible and scheduled workflows."
+      },
+      {
+        "path": "tests/Security",
+        "wordpress_bootstrap": true,
+        "purpose": "Authorization, injection, token, path, serialization, and data-leakage regressions."
+      },
+      {
+        "path": "tests/Performance",
+        "wordpress_bootstrap": true,
+        "purpose": "Explicitly invoked scale and concurrency benchmarks."
+      },
+      {
+        "path": "tests/Support",
+        "wordpress_bootstrap": false,
+        "purpose": "Shared bootstraps, factories, doubles, and deterministic helpers."
+      },
+      {
+        "path": "tests/Fixtures",
+        "wordpress_bootstrap": false,
+        "purpose": "Synthetic, redacted, non-production fixtures only."
+      }
+    ]
+  },
+  "ci_policy": {
+    "unimplemented_required_lane_is_failure": true,
+    "exact_resolved_versions_logged": true,
+    "required_lanes": [
+      {
+        "id": "quality-minimum",
+        "cadence": "pull_request_and_push",
+        "blocking": true,
+        "wordpress": "none",
+        "php": "8.1",
+        "database": "none",
+        "site_mode": "none",
+        "suites": [
+          "composer-validate",
+          "locked-dependency-audit",
+          "php-syntax",
+          "phpcs",
+          "phpcompatibility",
+          "phpstan",
+          "unit"
+        ]
+      },
+      {
+        "id": "quality-latest",
+        "cadence": "pull_request_and_push",
+        "blocking": true,
+        "wordpress": "none",
+        "php": "latest-supported",
+        "database": "none",
+        "site_mode": "none",
+        "suites": [
+          "php-syntax",
+          "unit"
+        ]
+      },
+      {
+        "id": "integration-minimum-mysql",
+        "cadence": "pull_request_and_push",
+        "blocking": true,
+        "wordpress": "6.5.0",
+        "php": "8.1",
+        "database": "mysql:5.7",
+        "site_mode": "single",
+        "suites": [
+          "integration",
+          "security"
+        ]
+      },
+      {
+        "id": "integration-minimum-mariadb",
+        "cadence": "pull_request_and_push",
+        "blocking": true,
+        "wordpress": "6.5.0",
+        "php": "8.1",
+        "database": "mariadb:10.4",
+        "site_mode": "single",
+        "suites": [
+          "integration"
+        ]
+      },
+      {
+        "id": "integration-current-php-band",
+        "cadence": "pull_request_and_push",
+        "blocking": true,
+        "wordpress": "latest-stable",
+        "php": [
+          "8.2",
+          "8.3",
+          "8.4",
+          "8.5"
+        ],
+        "database": "mysql:latest-supported-stable",
+        "site_mode": "single",
+        "suites": [
+          "integration",
+          "functional",
+          "security"
+        ]
+      },
+      {
+        "id": "integration-current-mariadb-multisite",
+        "cadence": "pull_request_and_push",
+        "blocking": true,
+        "wordpress": "latest-stable",
+        "php": "latest-supported",
+        "database": "mariadb:latest-supported-stable",
+        "site_mode": "multisite",
+        "suites": [
+          "integration",
+          "lifecycle"
+        ]
+      },
+      {
+        "id": "dependency-build-minimum",
+        "cadence": "pull_request_and_push",
+        "blocking": true,
+        "wordpress": "none",
+        "php": "8.1",
+        "database": "none",
+        "site_mode": "none",
+        "suites": [
+          "locked-production-build",
+          "dependency-isolation",
+          "dependency-license-notices",
+          "xlsx-zip-smoke"
+        ]
+      },
+      {
+        "id": "wordpress-trunk-forward-compatibility",
+        "cadence": "nightly",
+        "blocking": false,
+        "wordpress": "trunk",
+        "php": "latest-supported",
+        "database": "mysql:latest-supported-stable",
+        "site_mode": "single",
+        "suites": [
+          "integration",
+          "functional"
+        ]
+      },
+      {
+        "id": "performance-release-candidate",
+        "cadence": "release_candidate",
+        "blocking": true,
+        "wordpress": "latest-stable",
+        "php": "latest-supported",
+        "database": "mysql:latest-supported-stable",
+        "site_mode": "single",
+        "suites": [
+          "performance"
+        ]
+      }
+    ],
+    "nonblocking_failure_policy": "record_or_link_a_bug_before_the_next_release",
+    "release_requires_all_blocking_lanes": true
+  }
+}
