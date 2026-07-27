@@ -27,6 +27,8 @@ All material project changes are recorded here. This file follows the spirit of 
 - Added tracked directories for every planned application module, asset type, translation catalog, and admin/email template family. (`FND-001`)
 - Added a repeatable PHP foundation verifier for bootstrap constants, resolved paths, namespace isolation, unsafe-path rejection, and single autoloader registration. (`FND-001`)
 - Added a task dependency-graph verifier covering duplicate IDs, missing dependency references, and cycles. (`GOV-004`, `GOV-006`)
+- Added a dependency, namespace-isolation, Action Scheduler coexistence, reproducible-build, and production-packaging policy based on verified upstream requirements. (`ARCH-003`)
+- Added build preflight evidence and defect records for the unusable local Composer/GD toolchain and the WordPress/Action Scheduler minimum-version conflict. (`BUG-0004`, `BUG-0005`)
 
 ### Changed
 
@@ -35,6 +37,8 @@ All material project changes are recorded here. This file follows the spirit of 
 - Standardized planned identifiers as plugin slug/text domain `wp-formvault`, bootstrap `wp-formvault.php`, namespace root `WPFormVault`, and technical prefix `wpfv`. (`GOV-002`, `ARCH-001`)
 - Updated planned table names, WordPress capabilities, hooks/filters, public download parameter, admin menu label, plugin structure, schema version record, and uninstall table pattern to use the WP FormVault identity. (`GOV-002`, `ARCH-001`)
 - Advanced the project from documentation-only status to a verified foundation scaffold; no service container, activation, database, queue, or product runtime has been implemented yet. (`FND-001`)
+- Defined PhpSpreadsheet `^5.7.0`, PHP-8.1-compatible ZipStream `~3.0.2`, lock/platform rules, and build-only Strauss 0.28.1 as the dependency baseline; exact lock generation remains blocked. (`ARCH-003`)
+- Blocked Composer implementation until the user selects either WordPress 6.5 with Action Scheduler 3.9.3 or WordPress 6.2 with Action Scheduler 3.7.4, and until the local build runtime provides Composer 2.10+ and `ext-gd`. (`ARCH-002`, `ARCH-003`, `FND-002`, `BUG-0004`, `BUG-0005`)
 
 ### Deprecated
 
@@ -54,6 +58,7 @@ All material project changes are recorded here. This file follows the spirit of 
 
 - Added direct-access guards to runtime PHP files.
 - Restricted autoloading to validated `WPFormVault` namespace segments so class names cannot construct traversal paths. (`FND-001`)
+- Required build-time namespace isolation for generic Composer packages, explicit Composer plugin allow-listing, locked/audited dependencies, conflict testing, and no runtime dependency downloads. (`ARCH-003`)
 
 ## Release history
 

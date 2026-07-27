@@ -1,7 +1,7 @@
 # WP FormVault Task Register
 
 Last updated: 2026-07-27  
-Current stage: Foundation scaffold complete (`FND-001`); architecture/dependency definition is next.
+Current stage: Dependency architecture is blocked on the WordPress/Action Scheduler compatibility choice and local build prerequisites (`ARCH-003`, `FND-002`).
 
 ## Purpose
 
@@ -82,8 +82,8 @@ Never use “implemented as planned” as evidence.
 | ID | Submodule / task | State | Depends on | Notes / evidence |
 |---|---|---|---|---|
 | ARCH-001 | Freeze project identifiers: name, slug, namespace, text domain, prefixes | `COMPLETE` | GOV-002 | See `MEMORY.md` Project identity. |
-| ARCH-002 | Define supported WordPress/PHP/database compatibility matrix | `READY` | ARCH-001 | Baseline: WP 6.2+, PHP 8.1+, MySQL 5.7+ or MariaDB 10.4+. Verify in CI. |
-| ARCH-003 | Define Composer dependency versions and conflict policy | `READY` | FND-001 | PhpSpreadsheet, ZipStream, Action Scheduler; dependency direction corrected by BUG-0001. |
+| ARCH-002 | Define supported WordPress/PHP/database compatibility matrix | `READY` | ARCH-001 | User decision required: retain WP 6.2 with Action Scheduler 3.7.4 or raise the minimum to WP 6.5 for Action Scheduler 3.9.3 (`BUG-0005`). PHP 8.1+, 64-bit, MySQL 5.7+ or MariaDB 10.4+ remain the baseline pending CI. |
+| ARCH-003 | Define Composer dependency versions and conflict policy | `BLOCKED` | FND-001 | Policy recorded in `docs/architecture/dependency-policy.md`; generic dependency isolation, lock/build/release rules, PhpSpreadsheet and ZipStream constraints are defined. Completion is blocked on the user-owned WordPress/Action Scheduler choice in `BUG-0005`; exact lock verification also requires the toolchain in `BUG-0004`. |
 | ARCH-004 | Define service-container composition and module boundaries | `PLANNED` | FND-001 | Preserve dependency direction and testability. |
 | ARCH-005 | Define coding standards, static-analysis level, test layout, and CI matrix | `PLANNED` | FND-001 | WordPress coding standards required. |
 | ARCH-006 | Record architecture decisions that alter the implementation plan | `ACTIVE` | GOV-007 | Add dated decisions to `MEMORY.md`; update the plan if requirements change. |
@@ -93,7 +93,7 @@ Never use “implemented as planned” as evidence.
 | ID | Submodule / task | State | Depends on | Notes / evidence |
 |---|---|---|---|---|
 | FND-001 | Scaffold `wp-formvault.php`, module directories, autoloading, and constants | `COMPLETE` | ARCH-001 | Verified 2026-07-27 with PHP 8.2.31 container: all 3 PHP files pass `php -l`; `php tools/verify-foundation.php` passes constants, paths, namespace guard, and single autoloader registration; planned directories and legacy-name checks pass; `git diff --check` passes. |
-| FND-002 | Add Composer manifest and production dependency strategy | `PLANNED` | FND-001, ARCH-003 | Include reproducible install/build rules. |
+| FND-002 | Add Composer manifest and production dependency strategy | `BLOCKED` | FND-001, ARCH-003 | Blocked until `ARCH-003` is complete and `BUG-0004` provides usable Composer plus `ext-gd`; implement the reproducible strategy in `docs/architecture/dependency-policy.md`. |
 | FND-003 | Implement plugin bootstrap and service container | `PLANNED` | FND-001, ARCH-004 | Prevent work before compatibility/migration checks. |
 | FND-004 | Implement activator and per-site capability installation | `PLANNED` | DB-001, SEC-001 | Must support single site and multisite. |
 | FND-005 | Implement deactivator: unschedule events and clear locks, preserve data | `PLANNED` | QUEUE-001, QUEUE-004 | Verify no data deletion. |
@@ -421,11 +421,13 @@ Never use “implemented as planned” as evidence.
 
 ## Blockers and open scope decisions
 
-No implementation blocker is currently confirmed. The following choices must be resolved within their owning tasks before they affect code:
+The following confirmed blockers and open choices must be resolved before their dependent implementation:
 
 | Decision | Owning task | Current treatment |
 |---|---|---|
-| Exact dependency versions and packaging approach | ARCH-003 / FND-002 | Planned; do not invent versions. |
+| WordPress 6.2 + Action Scheduler 3.7.4 versus WordPress 6.5 + Action Scheduler 3.9.3 | ARCH-002 / ARCH-003 | `BUG-0005`; user decision required. The current dependency line is recommended. |
+| Usable Composer 2.10+ and `ext-gd` in the local build runtime | FND-002 | `BUG-0004`; environment owner must add them or authorize a repository-owned build runtime. |
+| Exact locked dependency closure and production artifact | ARCH-003 / FND-002 | Policy defined; Composer resolution, audit, prefix generation, and artifact tests remain blocked. |
 | CI providers and supported test database matrix | ARCH-005 / QA-001 | Planned. |
 | Advanced CF7 DB product/version scope | CF7-006 | Evaluate before adapter work. |
 | Custom recurrence syntax and validation limits | SCHED-005 | Define before UI/API implementation. |
@@ -433,4 +435,4 @@ No implementation blocker is currently confirmed. The following choices must be 
 
 ## Next executable task
 
-`ARCH-003` is the recommended next task: define verified dependency versions and conflict/packaging policy so `FND-002` can implement the Composer manifest. `ARCH-002` also remains independently `READY`.
+Select the WordPress/Action Scheduler profile recorded in `docs/architecture/dependency-policy.md`. Then complete `ARCH-002` and `ARCH-003`, repair the `BUG-0004` build prerequisites, and move `FND-002` to `READY`.

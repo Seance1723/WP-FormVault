@@ -43,7 +43,143 @@ This is the mandatory record for defects found during development, testing, depl
 
 ## Open bugs
 
-No open bugs.
+### BUG-0004 — Local dependency build runtime lacks usable Composer and GD
+
+- **State:** BLOCKED
+- **Severity:** S2 Medium
+- **First seen:** 2026-07-27 11:58:53 UTC
+- **Last seen:** 2026-07-27 12:00:38 UTC
+- **Environment:** local Windows host and `localdev_php_apache` container
+- **Affected version/commit:** unreleased working tree
+- **Affected modules/tasks:** ARCH-003, FND-002, EXPORT-001, FILES-003
+- **Reporter/owner:** Codex / local environment owner
+
+#### Observed behavior
+
+The local PHP container has no Composer executable and does not load `ext-gd`. The host has `C:\ProgramData\ComposerSetup\bin\composer.bat`, but invoking it fails because host PHP is not available on `PATH`.
+
+#### Expected behavior
+
+The dependency build runtime must provide Composer 2.10+, 64-bit PHP compatible with the declared minimum, and all PhpSpreadsheet runtime extensions so it can resolve, audit, isolate, and verify the production dependency tree.
+
+#### Reproduction steps
+
+1. Run `docker exec localdev_php_apache php -m`.
+2. Observe that `gd` is absent.
+3. Run `docker exec localdev_php_apache sh -lc "command -v composer || true"`.
+4. Observe no path/output.
+5. Run `composer --version` on the host.
+6. Observe that the launcher reports `php` is not recognized.
+
+#### Evidence
+
+- Container PHP: 8.2.31, 64-bit.
+- Loaded modules include every currently listed PhpSpreadsheet runtime extension except `gd`.
+- Host error: `'php' is not recognized as an internal or external command`.
+- Frequency: every current local dependency-build attempt.
+
+#### Impact and scope
+
+`composer.json` could be written but its lock, platform resolution, security audit, prefixed runtime tree, and production artifact could not be verified. No WordPress runtime or user data is affected because dependencies have not been introduced.
+
+#### Cause analysis
+
+- **Proximate cause:** Composer is unavailable in the container, host Composer has no PHP runtime, and the container omits `ext-gd`.
+- **Root cause:** The shared local Docker PHP image was not provisioned as a reproducible WP FormVault dependency-build environment.
+- **Contributing factors:** The project did not previously have a Composer dependency set or preflight.
+- **Why existing controls missed it:** Foundation verification required only PHP syntax/runtime behavior and did not exercise Composer or PhpSpreadsheet prerequisites.
+
+#### Resolution
+
+- **Fix:** Pending environment-owner choice: provision Composer 2.10+ and `ext-gd` in the local PHP image, or authorize a repository-owned reproducible build container with the complete extension set.
+- **Data repair:** Not required.
+- **Backward compatibility:** No product impact; build environment only.
+
+#### Recurrence prevention
+
+- New invariant/guard: dependency builds must run an automated PHP architecture, extension, Composer-version, and platform-resolution preflight.
+- Regression test: run the future dependency preflight and strict Composer validate/install/audit flow.
+- Broader related tests: generate and smoke-test the prefixed runtime tree on the declared minimum and current PHP versions.
+- Documentation/task/memory updates: dependency policy, task blocker, changelog, and memory updated.
+- Monitoring/alert: CI/build must fail before packaging when any required extension or tool is absent.
+
+#### Verification
+
+- Command/check: pending environment correction.
+- Result: blocked; current reproduction still fails.
+- Verified by/date: not yet verified.
+
+#### Timeline
+
+- `2026-07-27 11:58:53 UTC` — Missing `ext-gd` and Composer identified during dependency preflight.
+- `2026-07-27 12:00:38 UTC` — Host Composer failure and current container identity reconfirmed; task blocked.
+
+### BUG-0005 — Planned WordPress minimum conflicts with current Action Scheduler
+
+- **State:** BLOCKED
+- **Severity:** S2 Medium
+- **First seen:** 2026-07-27 11:58:53 UTC
+- **Last seen:** 2026-07-27 11:58:53 UTC
+- **Environment:** architecture/dependency review against official upstream release metadata
+- **Affected version/commit:** unreleased working tree
+- **Affected modules/tasks:** ARCH-002, ARCH-003, FND-002, QUEUE-001
+- **Reporter/owner:** Codex / product owner
+
+#### Observed behavior
+
+The WP FormVault plan declares WordPress 6.2+ while current Action Scheduler 3.9.3 declares WordPress 6.5+.
+
+#### Expected behavior
+
+Every bundled runtime dependency must support the complete WordPress/PHP platform range advertised by WP FormVault.
+
+#### Reproduction steps
+
+1. Read the WordPress minimum in `IMPLEMENTATION_PLAN.md`, `TASKS.md`, or `wp-formvault.php`.
+2. Read Action Scheduler 3.9.3 `readme.txt`.
+3. Compare WordPress 6.2+ with Action Scheduler's `Requires at least: 6.5`.
+4. Read Action Scheduler 3.7.4 `readme.txt` and observe it declares `Requires at least: 6.2`.
+
+#### Evidence
+
+- [Action Scheduler 3.9.3 readme](https://github.com/woocommerce/action-scheduler/blob/3.9.3/readme.txt): WordPress 6.5+.
+- [Action Scheduler 3.7.4 readme](https://github.com/woocommerce/action-scheduler/blob/3.7.4/readme.txt): WordPress 6.2+.
+- Frequency: deterministic requirement mismatch.
+
+#### Impact and scope
+
+Bundling 3.9.3 while advertising WordPress 6.2 could load unsupported dependency code on WordPress 6.2–6.4. Freezing 3.7.4 preserves the original support floor but accepts an older dependency line. No runtime sites or data are affected because Action Scheduler is not installed yet.
+
+#### Cause analysis
+
+- **Proximate cause:** Action Scheduler raised its WordPress minimum after the implementation plan's baseline was written.
+- **Root cause:** The plan recorded a platform baseline without binding it to a verified dependency lifecycle/update policy.
+- **Contributing factors:** Action Scheduler follows an L-2 WordPress dependency policy, so its minimum changes over time.
+- **Why existing controls missed it:** Dependency versions and compatibility were intentionally deferred to `ARCH-002`/`ARCH-003`.
+
+#### Resolution
+
+- **Fix:** Pending product-owner selection: WordPress 6.5 + Action Scheduler 3.9.3 (recommended current line), or WordPress 6.2 + Action Scheduler 3.7.4 with a documented maintenance/security exception.
+- **Data repair:** Not required.
+- **Backward compatibility:** Option A drops planned WordPress 6.2–6.4 support; Option B retains it but constrains dependency upgrades and APIs.
+
+#### Recurrence prevention
+
+- New invariant/guard: the advertised WordPress/PHP matrix must be checked against every locked runtime dependency during updates and release.
+- Regression test: CI install/smoke matrix at the exact WordPress minimum with the packaged Action Scheduler and coexistence-order scenarios.
+- Broader related tests: verify plugin headers, runtime guards, readme requirements, plan, task register, and package metadata agree.
+- Documentation/task/memory updates: dependency policy, task blocker, changelog, and memory updated.
+- Monitoring/alert: dependency-update automation must flag platform-minimum increases for explicit review, never auto-merge them.
+
+#### Verification
+
+- Command/check: pending product decision and synchronized implementation.
+- Result: blocked; mismatch remains intentionally visible.
+- Verified by/date: not yet verified.
+
+#### Timeline
+
+- `2026-07-27 11:58:53 UTC` — Official 3.9.3 and 3.7.4 requirements compared; product decision opened.
 
 ## Resolved bugs
 
