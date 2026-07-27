@@ -1,7 +1,7 @@
 # WP FormVault Project Memory
 
 Last updated: 2026-07-27  
-Memory status: Current for the verified foundation scaffold, dependency baseline, implemented base container/bootstrap, enforced module architecture, and implemented engineering-quality/CI toolchain.
+Memory status: Current for the verified foundation scaffold, dependency baseline, implemented base container/bootstrap, enforced module architecture, implemented engineering-quality/CI toolchain, and accepted database/migration-state contract.
 
 ## How to use this memory
 
@@ -57,7 +57,7 @@ Never:
 
 ## Current project state
 
-**Current:** The workspace contains the canonical plan/control documents, a verified WordPress plugin foundation, the implemented Composer dependency build/isolation layer, the explicit base service container, a fail-closed composition root, an enforceable module-boundary contract, and the installed engineering-quality/test toolchain with GitHub Actions workflow definitions. The bootstrap loads the isolated dependency tree, registers the bundled Action Scheduler loader without early API calls, verifies runtime compatibility, and intentionally stops at the pending schema gate. No schema-dependent product hook registrar starts. There is no activation lifecycle, database migration/schema, product queue integration, production ZIP, or release. The workflow files exist and are locally verified, but no immutable hosted GitHub Actions run is recorded in this workspace.
+**Current:** The workspace contains the canonical plan/control documents, a verified WordPress plugin foundation, the implemented Composer dependency build/isolation layer, the explicit base service container, a fail-closed composition root, an enforceable module-boundary contract, the installed engineering-quality/test toolchain with GitHub Actions workflow definitions, and the accepted machine-readable database/migration-state design. The bootstrap loads the isolated dependency tree, registers the bundled Action Scheduler loader without early API calls, verifies runtime compatibility, and intentionally stops at the pending schema gate. No schema-dependent product hook registrar starts. The 34-table catalog is a design contract, not an installed schema: there is no activation lifecycle, database table/migration runtime, product queue integration, production ZIP, or release. The workflow files exist and are locally verified, but no immutable hosted GitHub Actions run is recorded in this workspace.
 
 **Current completed controls:**
 
@@ -80,13 +80,14 @@ Never:
 - The root lock contains PHPUnit 9.6.35, PHPUnit Polyfills 3.1.2, WPCS 3.4.1 on PHPCS 3.13.5, PHPStan 2.2.6, and WordPress 6.5.7 stubs. PHPCompatibilityWP 3.0.0-alpha2 is isolated with PHPCS 4.0.1 under `tools/phpcompatibility/` because its current PHPCS requirement conflicts with stable WPCS.
 - Unit and WordPress-backed PHPUnit bootstraps are separate. The WordPress runner downloads an exact/latest/trunk runtime into a validated temporary directory, installs the matching `wp-phpunit` harness, uses an ephemeral environment-configured database, logs resolved versions, and supports explicit single-site/multisite suites.
 - `.github/workflows/quality.yml`, `forward-compatibility.yml`, and `release-candidate-performance.yml` implement the nine policy lane IDs. `tools/verify-quality-policy.php` validates the stable contract; `tools/verify-qa-tooling.php` cross-checks the locked tools, configurations, suite names, Docker prerequisites, and workflow job identities.
-- Local QA evidence on 2026-07-27: WPCS and PHPCompatibilityWP passed 36 first-party PHP files; PHPStan level 8 reported no errors; PHPUnit unit tests passed; actionlint 1.7.12 accepted all workflows; WordPress 6.5 single-site integration/security and multisite integration/functional harnesses passed under PHP 8.1.34 and MySQL 5.7.44. This local evidence does not substitute for hosted lane evidence.
+- `docs/architecture/database-schema-and-migration-state.md` and `database-schema-policy.json` freeze 34 per-site suffixes, 402 typed columns, 55 application relations, 21 unique candidate keys, schema stages 0–4, and the fail-closed per-site state/lease model; `tools/verify-database-schema-policy.php` enforces them.
+- Local QA evidence on 2026-07-27: WPCS and PHPCompatibilityWP passed 37 first-party PHP files; PHPStan level 8 reported no errors; PHPUnit unit tests passed; actionlint 1.7.12 accepted all workflows; WordPress 6.5 single-site integration/security and multisite integration/functional harnesses passed under PHP 8.1.34 and MySQL 5.7.44. This local evidence does not substitute for hosted lane evidence.
 - `tools/verify-foundation.php` passes in the local PHP 8.2.31 container.
 - `tools/verify-task-graph.ps1` validates all 198 tasks and 325 dependency edges with no missing references or cycles.
 
-**Current blockers:** None confirmed for the next database-design task. The production root's `blocked_schema` state is intentional until `DB-002`; it is not evidence of a working database migration.
+**Current blockers:** None confirmed for `DB-002`. The production root's `blocked_schema` state is intentional until the migration runner replaces `PendingSchemaGate`; the completed DB-001 design is not evidence of installed tables or working migrations.
 
-**Recommended next task:** `DB-001` — define schema versioning and the per-site migration-state model before implementing the migration framework.
+**Recommended next task:** `DB-002` — implement the control-plane bootstrap, ordered migration runner, fenced per-site migration lease, state transitions, version checks, and schema readiness gate.
 
 ## Project identity
 
@@ -146,6 +147,24 @@ The WordPress minimum intentionally changed from the original 6.2 plan baseline 
 
 The accepted graph contains 15 modules and 63 explicitly allowed dependencies. Omitted edges are forbidden; being acyclic alone does not authorize a dependency.
 
+## Database schema and migration-state baseline
+
+**Current accepted DB-001 design; runtime remains planned under DB-002 through DB-007:**
+
+- The authoritative catalog is `docs/architecture/database-schema-policy.json`; the human contract is `docs/architecture/database-schema-and-migration-state.md`.
+- Exactly 34 site-local tables resolve from `$wpdb->prefix . 'wpfv_' . $suffix`. Runtime code never hard-codes `wp_`, and rows do not duplicate a `site_id`.
+- The catalog contains 402 typed columns, 55 application-enforced relations, and 21 unique candidate keys. Database foreign keys are not part of the portable contract.
+- UTF-8 JSON uses application-validated `LONGTEXT`; runtime `DATETIME` values are UTC; nullable timestamps use SQL `NULL`; SHA-256 digests use `BINARY(32)`.
+- The two idempotently bootstrapped control tables are `wpfv_schema_version` and `wpfv_locks`. They do not advance the numbered domain schema.
+- Planned numbered stages are version 1 submission index (`DB-003`), version 2 schedules/reports (`DB-004`), version 3 workflow/automation (`DB-005`), and version 4 operations/access (`DB-006`).
+- Schema versions are contiguous non-negative integers independent of plugin SemVer. Fresh install and upgrade use the same chain; the installed version advances only after postconditions pass; automatic downgrade is forbidden.
+- Per-site states are `uninitialized`, `pending`, `running`, `awaiting_background`, `failed`, `ready`, and `blocked_newer`. Schema-dependent work runs only when installed equals target, state is ready, and no active migration lease exists.
+- The `schema_migration` lease stores only an owner-token hash and uses expiry, heartbeat, and an incrementing fencing token so a stale worker cannot commit after takeover.
+- Raw download tokens are never stored. Generated-file records contain opaque relative storage keys. IP/user-agent fields are nullable/privacy-gated, and report/audit relations declare anonymization behavior.
+- Critical uniqueness includes source submission identity, binary report/delivery/job idempotency keys, binary token hashes, lock keys, source cursors, and natural join/configuration keys.
+- `DB-007` owns final physical indexes and query-plan proof. DB-001 candidate keys are required inputs, not proof that indexes exist.
+- `tools/verify-database-schema-policy.php` currently passes with 34 tables, 402 columns, 55 relations, 21 unique keys, and contiguous stages 0–4.
+
 ## Engineering quality and CI baseline
 
 **Current implemented policy and QA-001 tooling:**
@@ -177,7 +196,7 @@ See `docs/architecture/engineering-quality-and-ci-policy.md` for rationale and `
 
 **Current locked runtime versions:** Composer PCRE 3.4.0, ZipStream 3.0.2, MarkBaker Complex 3.0.2, MarkBaker Matrix 3.0.1, PhpSpreadsheet 5.8.1, PSR Simple Cache 2.0.0, and Action Scheduler 3.9.3. Strauss 0.28.1 and its closure are build-only.
 
-**Current local evidence:** The shared `localdev_php_apache` container still lacks `gd` and Composer, but it is no longer a build blocker. The repository-owned image provides 64-bit PHP 8.1.34, Composer 2.10.2, and every required extension. Generated `vendor/`, `vendor-prefixed/`, and staged Action Scheduler directories are ignored and must be regenerated from the committed lock; they are not release artifacts.
+**Current local evidence:** The shared `localdev_php_apache` container still lacks `gd` and Composer, but it is no longer a build blocker. The Windows host Composer/PHP path is also non-authoritative: its global `COMPOSER` override is directory-valued and its PHP lacks required extensions (`BUG-0018`). The repository-owned image provides 64-bit PHP 8.1.34, Composer 2.10.2, and every required extension. Generated `vendor/`, `vendor-prefixed/`, and staged Action Scheduler directories are ignored and must be regenerated from the committed lock; they are not release artifacts.
 
 See `docs/architecture/dependency-policy.md` for the complete policy and evidence links.
 
@@ -498,6 +517,12 @@ The entry file now delegates to the idempotent composition root. It loads the lo
 ### 2026-07-27 — Quality toolchain and GitHub Actions matrix implemented
 
 QA uses PHPUnit 9.6 for both pure unit and official WordPress 6.5–7.0 harness compatibility, WPCS/PHPCS 3 for WordPress standards, a separate PHPCS 4 installation for the current alpha PHPCompatibilityWP stack, and PHPStan level 8 with minimum-WordPress stubs and no baseline. GitHub Actions is the selected hosted CI provider; all nine accepted lane IDs are defined across blocking, nightly informational, and release-candidate workflows. Workflow presence is not a passing hosted run, so release evidence must still link immutable successful GitHub Actions executions.
+
+### 2026-07-27 — Portable per-site schema and fenced migration state
+
+DB-001 froze a 34-table, 402-column site-local catalog using the active `$wpdb->prefix`, application-enforced relations, portable `LONGTEXT` JSON, UTC runtime timestamps, raw binary hashes, and privacy-aware nullable/anonymization fields. The machine policy allocates domain schema stages 1–4 to DB-003 through DB-006 while reserving DB-002 for idempotent control-plane bootstrap and the runner.
+
+Schema versions are integers independent of plugin releases. Every site owns its singleton state and `schema_migration` lease; no network-global version can mask an unprovisioned site. The gate is ready only when committed and target versions match, state is `ready`, and no migration lease is active. Owner tokens remain hashed and acquisitions are fenced. Failed, active, background, and newer-than-code states all block schema-dependent work. This decision is verified as a design contract only; no runtime table currently exists.
 
 ## Memory maintenance checklist
 

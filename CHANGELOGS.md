@@ -46,6 +46,9 @@ All material project changes are recorded here. This file follows the spirit of 
 - Added the locked QA toolchain: PHPUnit 9.6.35 with PHPUnit Polyfills, WPCS 3.4.1/PHPCS 3.13.5, PHPStan 2.2.6 with WordPress 6.5.7 stubs, and a separately locked PHPCS 4/PHPCompatibilityWP 3 alpha scanner to avoid incompatible PHPCS dependency graphs. (`QA-001`)
 - Added isolated unit and WordPress-backed PHPUnit bootstraps, synthetic fixtures, explicit integration/functional/security/performance suites, exact/latest/trunk WordPress resolution, dedicated database configuration, and single-site/multisite harness coverage. (`QA-001`)
 - Added GitHub Actions implementations for all nine accepted quality/integration/dependency/nightly/performance lane IDs plus an anti-drift verifier that cross-checks locked tools, configurations, test suites, Docker prerequisites, and workflow identities. (`QA-001`)
+- Added the authoritative 34-table, 402-column portable database catalog with 55 application-level relations, 21 unique candidate keys, UTC/type profiles, privacy-safe storage rules, and staged ownership for schema versions 0–4. (`DB-001`)
+- Added the per-site schema singleton, fail-closed migration-state machine, fenced hashed-token lease, fresh-install/upgrade equivalence, failure/retry, downgrade refusal, multisite provisioning, and background-transform contracts. (`DB-001`)
+- Added a database-policy verifier to the aggregate QA gate; it detects unsafe prefixes, catalog/plan drift, invalid types or relations, missing security/idempotency keys, and non-contiguous schema stages. (`DB-001`)
 
 ### Changed
 
@@ -62,6 +65,7 @@ All material project changes are recorded here. This file follows the spirit of 
 - Expanded the hardened plan and repository orientation with the accepted quality/CI contract, a dated WordPress 7.0.2 and PHP support reference snapshot, and explicit separation between policy completion (`ARCH-005`) and tool/workflow implementation (`QA-001`). (`ARCH-005`)
 - Expanded the pinned PHP 8.1 QA image with `curl` and `mysqli` so the repository-owned environment can download isolated WordPress test runtimes and connect to ephemeral MySQL/MariaDB services. (`QA-001`)
 - Advanced the engineering-quality policy from accepted-only to implemented tooling while retaining the release rule that workflow presence is not evidence of a successful hosted run. (`QA-001`)
+- Expanded the canonical plan and README with the accepted database schema/versioning contract while keeping runtime table/migration implementation explicitly assigned to `DB-002`–`DB-007`. (`DB-001`)
 
 ### Deprecated
 
@@ -90,6 +94,8 @@ All material project changes are recorded here. This file follows the spirit of 
 - Corrected the common PHPUnit runner from generic PHP-compatible major 10 to WordPress-harness-compatible major 9 after checking the official WordPress 6.5–7.0 matrix. (`ARCH-005`, `QA-001`, `BUG-0015`)
 - Corrected the initial WordPress smoke tests to assert a declared plugin constant and establish an administrator capability context before testing protected diagnostic output. (`QA-001`, `BUG-0016`)
 - Corrected and guarded the lowercase `wordpress` machine key in the quality-policy verifier after automatic prose capitalization made implemented-state verification fail. (`ARCH-005`, `QA-001`, `BUG-0017`)
+- Routed authoritative DB-001 verification through the repository-owned PHP 8.1 image after the unsupported host Composer/PHP environment failed its configuration and extension preconditions. (`DB-001`, `QA-001`, `BUG-0018`)
+- Corrected the database-policy verifier's docblocks, comparisons, diagnostics, and alignment so the complete WordPress coding-standards gate passes. (`DB-001`, `BUG-0019`)
 
 ### Security
 
@@ -97,6 +103,7 @@ All material project changes are recorded here. This file follows the spirit of 
 - Restricted autoloading to validated `WPFormVault` namespace segments so class names cannot construct traversal paths. (`FND-001`)
 - Required build-time namespace isolation for generic Composer packages, explicit Composer plugin allow-listing, locked/audited dependencies, conflict testing, and no runtime dependency downloads. (`ARCH-003`)
 - Added fail-closed dependency/platform/schema ordering, sanitized boot diagnostics with no internal exception/path disclosure, and prevention of product construction before every gate passes. (`FND-003`)
+- Froze hashed download-token and lease-owner storage, fenced migration ownership, fail-closed newer/active/failed schema states, relative-only file keys, nullable privacy-gated network identifiers, and application-enforced deletion/anonymization behavior. (`DB-001`)
 
 ## Release history
 

@@ -82,6 +82,7 @@
         "qa": [
             "@qa:install-phpcompatibility",
             "@verify-quality-tooling",
+            "@verify-database-schema-policy",
             "@lint",
             "@analyse",
             "@test:unit"
@@ -93,6 +94,7 @@
         "test:functional": "phpunit --configuration=phpunit.integration.xml.dist --testsuite=functional",
         "test:security": "phpunit --configuration=phpunit.integration.xml.dist --testsuite=security",
         "test:performance": "phpunit --configuration=phpunit.integration.xml.dist --testsuite=performance",
+        "verify-database-schema-policy": "@php tools/verify-database-schema-policy.php",
         "verify-dependencies": "@php tools/verify-dependencies.php",
         "verify-quality-tooling": "@php tools/verify-qa-tooling.php"
     },

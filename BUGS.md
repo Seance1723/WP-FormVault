@@ -45,6 +45,143 @@ This is the mandatory record for defects found during development, testing, depl
 
 Records are ordered by discovery recency. The `State` field is authoritative.
 
+### BUG-0019 — Initial database-policy verifier violated project coding standards
+
+- **State:** CLOSED
+- **Severity:** S3 Low
+- **First seen:** 2026-07-27 17:40:46 UTC
+- **Last seen:** 2026-07-27 17:52:18 UTC
+- **Environment:** pinned PHP 8.1.34 QA container, WPCS 3.4.1 / PHPCS 3.13.5
+- **Affected version/commit:** unreleased working tree
+- **Affected modules/tasks:** `DB-001`
+- **Reporter/owner:** Codex
+
+#### Observed behavior
+
+The first full QA run accepted the database contract itself but PHPCS rejected the new verifier with five errors and nine warnings. A later count-guard edit briefly reintroduced five alignment warnings before final verification.
+
+#### Expected behavior
+
+The DB-001 verifier must pass the repository's WordPress coding and documentation standards before DB-001 can complete.
+
+#### Reproduction steps
+
+1. Add the initial `tools/verify-database-schema-policy.php`.
+2. Run `composer run qa` in the pinned PHP 8.1 container.
+3. Observe invalid generic docblock types, non-Yoda comparisons, assignment-alignment warnings, and development-function warnings.
+
+#### Evidence
+
+- Sanitized error: `FOUND 5 ERRORS AND 9 WARNINGS AFFECTING 14 LINES`.
+- Recurrence error: `FOUND 0 ERRORS AND 5 WARNINGS AFFECTING 5 LINES`.
+- Test name/result: the database-policy verifier passed before the PHPCS phase failed.
+- Frequency: every standards run against the initial verifier.
+
+#### Impact and scope
+
+DB-001 could not satisfy its quality gate. No production runtime, database, or user data was affected.
+
+#### Cause analysis
+
+- **Proximate cause:** The initial verifier used `list<string>` documentation unsupported by the configured Squiz sniff, variable-first strict comparisons, unaligned assignments, and `var_export()` in diagnostic paths.
+- **Root cause:** The verifier's first structural execution occurred before its first complete standards execution.
+- **Contributing factors:** The policy logic itself passed, so the failure occurred only in the later aggregate QA phase; an additional verifier edit occurred after the first successful aggregate run.
+- **Why existing controls missed it:** The file was new and had no earlier standards evidence; the first closure was recorded before the last PHP edit.
+
+#### Resolution
+
+- **Fix:** Replaced incompatible docblock types, removed debug-style value rendering, used the required comparison order, and aligned both the original assignments and the later count-guard assignment block.
+- **Data repair:** Not required.
+- **Backward compatibility:** No runtime impact; the verifier remains a standalone development control.
+
+#### Recurrence prevention
+
+- New invariant/guard: the database-policy verifier is part of `composer run qa`, and the complete gate is rerun after the last PHP edit.
+- Regression test: run both PHPCS and PHPCompatibilityWP against all first-party PHP.
+- Broader related tests: run the full PHPStan and unit suite after the standards correction.
+- Documentation/task/memory updates: bug, changelog, task evidence, and memory synchronized.
+- Monitoring/alert: any standards drift exits the QA script non-zero.
+
+#### Verification
+
+- Command/check: `composer run qa` in `wp-formvault-dependency-build:php8.1-composer2.10`.
+- Result: both standards scans passed 37/37 files, PHPStan reported no errors, and PHPUnit passed 2 tests with 4 assertions.
+- Verified by/date: Codex, 2026-07-27 17:52:18 UTC.
+
+#### Timeline
+
+- `2026-07-27 17:40:46 UTC` — Aggregate QA failure recorded and triaged.
+- `2026-07-27 17:42:35 UTC` — Corrected verifier passed the complete QA gate.
+- `2026-07-27 17:52:18 UTC` — The later count-guard recurrence was recorded; DB-001 had returned to `VERIFY` until the gate passed.
+- `2026-07-27 17:52:18 UTC` — Targeted PHPCS and the complete QA gate passed after the final PHP edit.
+
+### BUG-0018 — Host Composer and PHP environment could not execute repository QA
+
+- **State:** CLOSED
+- **Severity:** S3 Low
+- **First seen:** 2026-07-27 17:40:46 UTC
+- **Last seen:** 2026-07-27 17:42:35 UTC
+- **Environment:** local Windows host Composer wrapper and PHP runtime; pinned Docker QA environment unaffected
+- **Affected version/commit:** local development environment, unreleased working tree
+- **Affected modules/tasks:** `DB-001`, `QA-001`
+- **Reporter/owner:** Codex
+
+#### Observed behavior
+
+Host Composer commands stopped before reading the repository because the process inherited a `COMPOSER` variable that pointed to a directory. Removing only that override exposed a second host-runtime failure: OpenSSL was unavailable. Direct PHPCS execution also stopped at Composer's platform check because `fileinfo`, `gd`, and `zip` were unavailable.
+
+#### Expected behavior
+
+Project verification must execute in a runtime satisfying the locked platform requirements and must not depend on a poisoned global Composer override.
+
+#### Reproduction steps
+
+1. Run `composer validate --strict --no-check-publish` in the repository using the host environment.
+2. Observe Composer reject the directory-valued `COMPOSER` variable.
+3. Remove the variable for that process and rerun.
+4. Observe the missing OpenSSL failure; direct `php vendor/bin/phpcs` also reports missing locked extensions.
+
+#### Evidence
+
+- Sanitized errors: `The COMPOSER environment variable ... is a directory`; `The openssl extension is required`; Composer platform check reports missing `fileinfo`, `gd`, and `zip`.
+- Frequency: every attempted host Composer/Composer-autoloaded QA command in this session.
+
+#### Impact and scope
+
+The host runtime cannot be authoritative QA evidence. Repository code and production data were unaffected because no migrations or runtime writes occurred.
+
+#### Cause analysis
+
+- **Proximate cause:** A machine-global Composer override was invalid and the host PHP extension set did not meet the project platform.
+- **Root cause:** The host environment is outside the frozen, repository-owned QA baseline.
+- **Contributing factors:** Composer became available after the earlier dependency-toolchain assessment, but availability did not imply a compatible configuration or extension set.
+- **Why existing controls missed it:** The pinned container is the supported verification route; the unsupported host route was exercised only as a convenience attempt.
+
+#### Resolution
+
+- **Fix:** Used the digest-built repository QA image `wp-formvault-dependency-build:php8.1-composer2.10` for strict validation, standards, analysis, and tests. The host's global configuration was not mutated.
+- **Data repair:** Not required.
+- **Backward compatibility:** None.
+
+#### Recurrence prevention
+
+- New invariant/guard: authoritative local QA uses the repository-owned container unless the host first passes the complete platform verifier.
+- Regression test: strict Composer validation and `composer run qa` in the pinned image.
+- Broader related tests: the aggregate QA script includes policy checks, both standards scanners, PHPStan, and PHPUnit.
+- Documentation/task/memory updates: bug, changelog, task evidence, and memory synchronized.
+- Monitoring/alert: container commands fail non-zero when platform or QA requirements drift.
+
+#### Verification
+
+- Command/check: strict Composer validation followed by `composer run qa` in the pinned PHP 8.1 image.
+- Result: manifest valid; database contract passed; both standards scans, PHPStan, and unit tests passed.
+- Verified by/date: Codex, 2026-07-27 17:42:35 UTC.
+
+#### Timeline
+
+- `2026-07-27 17:40:46 UTC` — Host failures recorded and verification moved to the frozen runtime.
+- `2026-07-27 17:42:35 UTC` — Pinned-container validation and aggregate QA passed.
+
 ### BUG-0017 — Automatic prose capitalization changed a machine-readable policy key
 
 - **State:** CLOSED

@@ -319,6 +319,8 @@ Custom tables (not post-meta) for scale. All timestamps are stored in **UTC** (`
 
 ### 6.1 Core tables
 
+The `wp_` names below are illustrative. Runtime code always resolves the current site's tables as `$wpdb->prefix . 'wpfv_' . $suffix`; it never hard-codes `wp_`. The authoritative 34-table column/type/relation catalog is `docs/architecture/database-schema-policy.json`, with rationale and migration-state rules in `docs/architecture/database-schema-and-migration-state.md`. JSON documents use application-validated `LONGTEXT` for portable MySQL 5.7+/MariaDB 10.4+ behavior, runtime timestamps are UTC, and declared relations are enforced in the application rather than through database foreign keys.
+
 ```text
 wp_wpfv_forms                 wp_wpfv_schedules
 wp_wpfv_form_fields           wp_wpfv_schedule_forms
@@ -1098,10 +1100,14 @@ This yields broad compatibility without coupling to any single form plugin, whil
 
 ## 40. Schema Migration & Versioning **[NEW]**
 
-- A `wp_wpfv_schema_version` record tracks the installed schema.
-- **`Migrations`** runs ordered, idempotent upgrade steps on activation and on version bump (using `dbDelta` for additive changes and explicit `ALTER`s for the rest).
+- A per-site `wp_wpfv_schema_version` singleton tracks the last committed schema, current code target, migration state, stable redacted failure code, and UTC lifecycle timestamps. The literal `wp_` remains illustrative.
+- Schema versions are a contiguous, monotonically increasing integer sequence independent of the plugin release version. Fresh installs and upgrades run the same ordered, idempotent chain from version `0`; the installed version advances only after a step's postconditions pass.
+- Two idempotently bootstrapped control tables (`wpfv_schema_version` and `wpfv_locks`) precede numbered domain migrations. A unique `schema_migration` row uses a hashed owner token, expiry, heartbeat, and incrementing fencing token.
+- Per-site states are `uninitialized`, `pending`, `running`, `awaiting_background`, `failed`, `ready`, and `blocked_newer`. Schema-dependent services run only when the committed version equals the target, state is `ready`, and no migration lease is active. A database newer than the installed code enters `blocked_newer`; automatic downgrade is forbidden.
+- **`Migrations`** runs ordered, idempotent upgrade steps on activation and on ordinary version checks because plugin activation hooks do not run for a normal update. It uses `dbDelta` only for table creation/reviewed additive changes and explicit guarded `ALTER`s for the rest.
 - Each migration is reversible-documented and tested (§35.6). Data-transforming migrations run as **batched background jobs** so large sites don't time out on upgrade.
-- The plugin refuses to run report generation mid-migration (guarded by a migration lock).
+- The plugin refuses to run report generation while migration state is not `ready`.
+- The authoritative contract and planned versions `0`–`4` are defined in `docs/architecture/database-schema-policy.json` and `docs/architecture/database-schema-and-migration-state.md`.
 
 ---
 

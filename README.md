@@ -2,7 +2,7 @@
 
 WP FormVault is a planned adapter-driven WordPress plugin for centralized form-submission indexing, reporting, scheduling, workflow, export, and secure delivery across supported form plugins.
 
-Current status: the guarded plugin entry file, foundation constants, internal namespace autoloader, compatibility profile, Composer lock, isolated dependency build, explicit service container, fail-closed composition root, planned module directories, enforceable module-boundary architecture, locked QA toolchain, WordPress test harness, and nine-lane GitHub Actions definitions are implemented and locally verified. Production boot currently stops safely at the pending schema gate. Activation, database/migrations, product hook providers, queue APIs, adapters, and product features are not implemented yet. No immutable hosted CI run is recorded in the repository.
+Current status: the guarded plugin entry file, foundation constants, internal namespace autoloader, compatibility profile, Composer lock, isolated dependency build, explicit service container, fail-closed composition root, planned module directories, enforceable module-boundary architecture, locked QA toolchain, WordPress test harness, nine-lane GitHub Actions definitions, and the complete database/migration-state design are implemented and locally verified. Production boot currently stops safely at the pending schema gate. The database catalog is a design contract only: activation, database tables/migration runtime, product hook providers, queue APIs, adapters, and product features are not implemented yet. No immutable hosted CI run is recorded in the repository.
 
 ## Architecture and policy verification
 
@@ -13,10 +13,11 @@ php tools/verify-bootstrap.php
 php tools/verify-architecture.php
 php tools/verify-quality-policy.php
 php tools/verify-qa-tooling.php
+php tools/verify-database-schema-policy.php
 powershell -NoProfile -ExecutionPolicy Bypass -File tools/verify-task-graph.ps1
 ```
 
-The bootstrap verifier covers lazy/shared/transient services, aliases, duplicate/missing/circular/frozen failures, packaged dependency loading, gate order, safe diagnostics, hook idempotency, and site-graph isolation. The architecture verifier rejects outward/cyclic layer edges, undeclared modules, private cross-module imports, and container references outside the composition boundary. The quality-policy verifier enforces the stable WordPress coding rulesets, PHPStan level, no-baseline rule, test taxonomy, compatibility floors, and required blocking/informational CI lanes. The QA verifier separately checks the installed package locks, configurations, suite names, Docker prerequisites, and all nine workflow job identities.
+The bootstrap verifier covers lazy/shared/transient services, aliases, duplicate/missing/circular/frozen failures, packaged dependency loading, gate order, safe diagnostics, hook idempotency, and site-graph isolation. The architecture verifier rejects outward/cyclic layer edges, undeclared modules, private cross-module imports, and container references outside the composition boundary. The quality-policy verifier enforces the stable WordPress coding rulesets, PHPStan level, no-baseline rule, test taxonomy, compatibility floors, and required blocking/informational CI lanes. The QA verifier separately checks the installed package locks, configurations, suite names, Docker prerequisites, and all nine workflow job identities. The database-policy verifier enforces the 34-table/402-column portable catalog, application relations, security/idempotency keys, and per-site schema stages and state model.
 
 The complete fast quality gate is:
 
@@ -56,4 +57,6 @@ A clean Docker Desktop build over the Windows bind mount measured approximately 
 - [Machine-readable module graph](./docs/architecture/module-boundaries.json)
 - [Engineering quality and CI policy](./docs/architecture/engineering-quality-and-ci-policy.md)
 - [Machine-readable quality policy](./docs/architecture/quality-policy.json)
+- [Database schema and migration-state contract](./docs/architecture/database-schema-and-migration-state.md)
+- [Machine-readable database schema policy](./docs/architecture/database-schema-policy.json)
 - [Repository instructions](./AGENTS.md)

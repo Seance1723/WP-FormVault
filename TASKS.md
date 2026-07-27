@@ -1,7 +1,7 @@
 # WP FormVault Task Register
 
 Last updated: 2026-07-27  
-Current stage: Quality tooling and CI definitions are complete; database versioning/migration design is next (`DB-001`).
+Current stage: Database inventory and per-site migration-state design are complete; the migration runner is next (`DB-002`).
 
 ## Purpose
 
@@ -105,8 +105,8 @@ Never use “implemented as planned” as evidence.
 
 | ID | Submodule / task | State | Depends on | Notes / evidence |
 |---|---|---|---|---|
-| DB-001 | Finalize table inventory, columns, data types, and application-level relations | `READY` | FND-001 | Use `$wpdb->prefix . 'wpfv_'`; all runtime timestamps UTC. Sequence after `ARCH-005` unless reprioritized. |
-| DB-002 | Implement ordered, idempotent schema migration runner and schema version | `PLANNED` | DB-001 | Add migration lock and upgrade guard. |
+| DB-001 | Finalize table inventory, columns, data types, application-level relations, and migration-state contract | `COMPLETE` | FND-001 | Verified 2026-07-27: accepted 34 per-site table suffixes, 402 typed columns, 55 application relations, 21 unique candidate keys, portable `LONGTEXT` JSON, UTC timestamps, stages 0–4, singleton schema state, and fenced hashed-token lease. `php tools/verify-database-schema-policy.php` passed; strict Composer validation passed; after the final PHP edit, pinned PHP 8.1 `composer run qa` passed 37/37 WPCS and PHPCompatibility files, PHPStan with no errors, and 2 PHPUnit tests/4 assertions. (`BUG-0018`, `BUG-0019`) |
+| DB-002 | Implement ordered, idempotent schema migration runner and schema version | `READY` | DB-001 | Implement control-plane bootstrap, fenced migration lease, state transitions, upgrade guard, and schema readiness gate from the accepted DB-001 contract. |
 | DB-003 | Create forms, fields, submissions, snapshots, and indexed values tables | `PLANNED` | DB-002 | Hybrid canonical JSON + selective EAV model. |
 | DB-004 | Create schedules, mappings, filters, recipients, reports, files, and delivery tables | `PLANNED` | DB-002 | Preserve intended period and idempotency key. |
 | DB-005 | Create workflow, notes, tags, saved views, notifications, automation, and audit tables | `PLANNED` | DB-002 | Include optimistic `row_version`. |
@@ -431,4 +431,4 @@ No confirmed implementation blocker remains. The following choices stay within t
 
 ## Next executable task
 
-`DB-001` is the recommended `READY` task: define schema versioning and the per-site migration-state model before implementing the migration framework. `SEC-001`, `ADAPTER-001`, `LOG-001`, `EMAIL-001`, and `HEALTH-001` are also dependency-ready but remain sequenced after the database foundation unless the user reprioritizes them.
+`DB-002` is the recommended `READY` task: implement the ordered migration runner, control-plane bootstrap, fenced per-site migration lease, and schema readiness gate from the completed DB-001 contract. `SEC-001`, `ADAPTER-001`, `LOG-001`, `EMAIL-001`, and `HEALTH-001` are also dependency-ready but remain sequenced after the database foundation unless the user reprioritizes them.
