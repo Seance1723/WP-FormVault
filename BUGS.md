@@ -43,11 +43,206 @@ This is the mandatory record for defects found during development, testing, depl
 
 ## Open bugs
 
-No confirmed project bugs have been recorded. The project currently contains documentation controls only; runtime/plugin code has not started.
+No open bugs.
 
 ## Resolved bugs
 
-None.
+### BUG-0001 — Circular dependencies blocked task execution order
+
+- **State:** CLOSED
+- **Severity:** S3 Low
+- **First seen:** 2026-07-27 11:44:08 UTC
+- **Last seen:** 2026-07-27 11:46:12 UTC
+- **Environment:** local documentation/task review
+- **Affected version/commit:** unreleased working tree
+- **Affected modules/tasks:** ARCH-003, FND-002, DB-008, SEC-004, SEC-007, ADAPTER-002, SEC-008, EXPORT-006, AUDIT-003, PRIVACY-003
+- **Reporter/owner:** Codex
+
+#### Observed behavior
+
+The task register contained mutually dependent task pairs. The first observed pair was `ARCH-003` and `FND-002`; the new graph verifier then found additional cycles in repository/security, branding/SSRF, and privacy/audit work.
+
+#### Expected behavior
+
+The dependency/version policy must be decided before the Composer manifest is implemented, without a circular prerequisite.
+
+#### Reproduction steps
+
+1. Open `TASKS.md`.
+2. Read the dependency cells for `ARCH-003` and `FND-002`.
+3. Observe cycles including `ARCH-003 -> FND-002 -> ARCH-003`, `DB-008 -> SEC-004 -> DB-008`, `ADAPTER-002 -> SEC-007 -> ADAPTER-002`, `SEC-008 -> EXPORT-006 -> SEC-008`, and `AUDIT-003 -> PRIVACY-003 -> AUDIT-003`.
+
+#### Evidence
+
+- Task-register dependency cells reproduced the cycle deterministically.
+- Frequency: every task-planning pass.
+
+#### Impact and scope
+
+No runtime or user data was affected. The defect blocked the next foundation task and could have caused contributors to bypass the mandatory task workflow.
+
+#### Cause analysis
+
+- **Proximate cause:** The prerequisite was entered in both directions.
+- **Root cause:** The initial task decomposition did not include dependency-graph cycle verification.
+- **Contributing factors:** Architecture-policy and manifest-implementation work were closely related and their direction was not reviewed separately.
+- **Why existing controls missed it:** Task IDs and states were validated, but dependency cycles were not.
+
+#### Resolution
+
+- **Fix:** Correct dependency direction so policy/security primitives precede their consumers; validate the complete graph after all corrections.
+- **Data repair:** Not required.
+- **Backward compatibility:** No impact.
+
+#### Recurrence prevention
+
+- New invariant/guard: task dependency changes must pass a cycle check.
+- Regression test: repeatable `tools/verify-task-graph.ps1`.
+- Broader related tests: validate referenced task IDs and full graph acyclicity.
+- Documentation/task/memory updates: task dependency rule, changelog, bug register, and memory updated.
+- Monitoring/alert: verifier exits non-zero for missing dependency IDs or cycles.
+
+#### Verification
+
+- Command/check: `powershell -NoProfile -ExecutionPolicy Bypass -File tools/verify-task-graph.ps1`
+- Result: passed with 198 tasks, 325 dependency edges, no missing references, and no cycles.
+- Verified by/date: Codex, 2026-07-27 11:48:23 UTC.
+
+#### Timeline
+
+- `2026-07-27 11:44:08 UTC` — Composer dependency cycle identified and bug record opened.
+- `2026-07-27 11:46:12 UTC` — Automated graph traversal found additional dependency cycles.
+- `2026-07-27 11:48:23 UTC` — Dependency directions corrected; complete graph verification passed.
+
+### BUG-0002 — Task-graph verifier rejected its initial empty traversal path
+
+- **State:** CLOSED
+- **Severity:** S3 Low
+- **First seen:** 2026-07-27 11:45:25 UTC
+- **Last seen:** 2026-07-27 11:45:25 UTC
+- **Environment:** local Windows PowerShell
+- **Affected version/commit:** unreleased working tree
+- **Affected modules/tasks:** GOV-004, GOV-006
+- **Reporter/owner:** Codex
+
+#### Observed behavior
+
+Running `tools/verify-task-graph.ps1` stopped before graph traversal with `ParameterArgumentValidationErrorEmptyArrayNotAllowed`.
+
+#### Expected behavior
+
+The verifier must accept an empty root traversal path and validate all tasks.
+
+#### Reproduction steps
+
+1. Run `powershell -File tools/verify-task-graph.ps1`.
+2. Observe parameter binding fail when `Visit-Task` receives `-Path @()`.
+
+#### Evidence
+
+- PowerShell error: `Cannot bind argument to parameter 'Path' because it is an empty array.`
+- Frequency: every verifier run.
+
+#### Impact and scope
+
+The new recurrence-prevention check could not run. No plugin runtime or user data was affected.
+
+#### Cause analysis
+
+- **Proximate cause:** A mandatory array parameter did not declare that an empty collection is valid.
+- **Root cause:** The verifier's root traversal contract was not exercised before the first run.
+- **Contributing factors:** Windows PowerShell parameter binding is stricter for mandatory empty-array arguments.
+- **Why existing controls missed it:** This was the verifier's first execution.
+
+#### Resolution
+
+- **Fix:** Added `AllowEmptyCollection` to the traversal path parameter.
+- **Data repair:** Not required.
+- **Backward compatibility:** No impact.
+
+#### Recurrence prevention
+
+- New invariant/guard: run the verifier from an empty root path as its normal entry case.
+- Regression test: rerun the verifier and confirm graph traversal completes.
+- Broader related tests: confirm duplicate, missing-reference, and cycle checks remain active by inspection.
+- Documentation/task/memory updates: changelog, bug register, and memory updated.
+- Monitoring/alert: non-zero verifier exit remains the failure signal.
+
+#### Verification
+
+- Command/check: current-session, fresh-process, and explicit-task-file verifier invocations.
+- Result: all three invocation modes passed with the complete acyclic task graph.
+- Verified by/date: Codex, 2026-07-27 11:48:23 UTC.
+
+#### Timeline
+
+- `2026-07-27 11:45:25 UTC` — Failure reproduced and bug record opened.
+- `2026-07-27 11:48:23 UTC` — Empty-root traversal fix verified in all invocation modes.
+
+### BUG-0003 — Task-graph verifier resolved its default path too early
+
+- **State:** CLOSED
+- **Severity:** S3 Low
+- **First seen:** 2026-07-27 11:47:33 UTC
+- **Last seen:** 2026-07-27 11:47:33 UTC
+- **Environment:** local Windows PowerShell launched as a fresh process
+- **Affected version/commit:** unreleased working tree
+- **Affected modules/tasks:** GOV-004, GOV-006
+- **Reporter/owner:** Codex
+
+#### Observed behavior
+
+The verifier passed when invoked in the current session but failed under the documented `powershell -File` command because `$PSScriptRoot` was empty while evaluating the parameter's default value.
+
+#### Expected behavior
+
+The verifier must locate `TASKS.md` reliably when invoked from a fresh PowerShell process.
+
+#### Reproduction steps
+
+1. Run `powershell -NoProfile -ExecutionPolicy Bypass -File tools/verify-task-graph.ps1`.
+2. Observe `Split-Path` reject an empty path during parameter initialization.
+
+#### Evidence
+
+- PowerShell error: `Cannot bind argument to parameter 'Path' because it is an empty string.`
+- Frequency: every fresh-process invocation without an explicit `-TaskFile`.
+
+#### Impact and scope
+
+The exact command documented in `TASKS.md` did not work, so contributors and CI could not rely on the guard. No plugin runtime or user data was affected.
+
+#### Cause analysis
+
+- **Proximate cause:** `$PSScriptRoot` was used in a parameter default expression.
+- **Root cause:** Script location resolution was performed before the script body instead of after parameter binding.
+- **Contributing factors:** The initial check ran in the current PowerShell session, which exercised a different invocation path.
+- **Why existing controls missed it:** The documented fresh-process command had not yet been executed.
+
+#### Resolution
+
+- **Fix:** Move default task-file resolution into the script body, after parameter binding.
+- **Data repair:** Not required.
+- **Backward compatibility:** Explicit `-TaskFile` usage remains supported.
+
+#### Recurrence prevention
+
+- New invariant/guard: command examples must be executed exactly as documented.
+- Regression test: run both current-session and fresh-process invocations.
+- Broader related tests: pass an explicit task-file path.
+- Documentation/task/memory updates: task command, changelog, bug register, and memory verified/updated.
+- Monitoring/alert: non-zero verifier exit remains the failure signal.
+
+#### Verification
+
+- Command/check: `powershell -NoProfile -ExecutionPolicy Bypass -File tools/verify-task-graph.ps1` with and without `-TaskFile`.
+- Result: both fresh-process forms passed; current-session invocation also passed.
+- Verified by/date: Codex, 2026-07-27 11:48:23 UTC.
+
+#### Timeline
+
+- `2026-07-27 11:47:33 UTC` — Fresh-process path-resolution failure reproduced and recorded.
+- `2026-07-27 11:48:23 UTC` — Default and explicit task-file resolution verified.
 
 ## Bug record template
 

@@ -1,7 +1,7 @@
 # WP FormVault Project Memory
 
 Last updated: 2026-07-27  
-Memory status: Current for the documentation-only project baseline.
+Memory status: Current for the verified foundation-scaffold baseline.
 
 ## How to use this memory
 
@@ -55,7 +55,7 @@ Never:
 
 ## Current project state
 
-**Current:** The workspace contains the canonical implementation plan and four mandatory project-control documents. There is no WordPress plugin implementation, Composer manifest, database migration, automated test suite, build artifact, or release yet.
+**Current:** The workspace contains the canonical plan/control documents and a verified WordPress plugin foundation scaffold. The scaffold defines plugin metadata/constants, registers the internal namespace autoloader, and tracks the planned module directories. It does not yet start product services. There is no Composer manifest, service container, activation lifecycle, database migration, automated test framework, build artifact, or release.
 
 **Current completed controls:**
 
@@ -64,8 +64,12 @@ Never:
 - Canonical plan stored as `IMPLEMENTATION_PLAN.md`.
 - Task, changelog, bug, and memory maintenance rules established.
 - Root `AGENTS.md` instructs future contributors/agents to follow and synchronize these controls.
+- `wp-formvault.php` provides the guarded WordPress entry boundary and foundation constants.
+- `includes/Autoloader.php` provides validated, idempotent `WPFormVault\*` class resolution.
+- `tools/verify-foundation.php` passes in the local PHP 8.2.31 container.
+- `tools/verify-task-graph.ps1` validates all 198 tasks and 325 dependency edges with no missing references or cycles.
 
-**Next ready task:** `FND-001` — scaffold the plugin foundation. See `TASKS.md`.
+**Recommended next task:** `ARCH-003` — verify and define dependency versions/conflict/packaging policy before implementing `FND-002`. `ARCH-002` is also independently ready.
 
 ## Project identity
 
@@ -81,8 +85,20 @@ Never:
 | Capability prefix | `wpfv_` | Required/frozen |
 | Hooks/filters prefix | `wpfv_` | Required/frozen |
 | Public download query key | `wpfv_download` | Required/frozen |
+| Current development version | `0.0.0-dev` | Current; unreleased scaffold only |
 
 The example table `wp_wpfv_submissions` means `$wpdb->prefix . 'wpfv_submissions'`; never hard-code `wp_`, especially on multisite.
+
+## Current foundation implementation
+
+- `wp-formvault.php` is the only WordPress plugin entry file.
+- Runtime PHP files stop when `ABSPATH` is not defined.
+- The entry file declares the WordPress/PHP minimums and identity/path constants, then registers the internal autoloader.
+- The entry file intentionally does not instantiate a plugin/service container or register product hooks; that belongs to `FND-003`.
+- `WPFormVault\Autoloader` maps namespace-relative class names into `/includes`, validates every namespace segment, ignores unrelated/unsafe names, and registers only once.
+- Composer dependencies and Composer autoloading have not been introduced; that remains `ARCH-003`/`FND-002`.
+- Module directories mirror the hardened plan: Core, Adapters, Sync, Submissions, Workflow, Reports, Scheduling, Email, Downloads, Privacy, Notifications, Audit, Rest, Health, and Admin, plus assets, languages, and templates.
+- The standalone verifier uses only non-production WordPress stubs and must not be loaded by WordPress.
 
 ## Product concept
 
@@ -361,6 +377,14 @@ The product name is **WP FormVault**. The canonical technical identifiers are `w
 ### 2026-07-27 — Current-state honesty
 
 The implementation plan describes required behavior, not existing behavior. Until code and passing verification exist, features remain planned.
+
+### 2026-07-27 — Pre-Composer foundation
+
+The unreleased scaffold uses version `0.0.0-dev` and a small internal `WPFormVault` autoloader so module classes can be added safely before dependency packaging is defined. Product service startup remains separate in `FND-003`.
+
+### 2026-07-27 — Task dependency graph is enforced
+
+After circular prerequisites were found, task dependency changes now require `tools/verify-task-graph.ps1`. The verifier rejects duplicate task IDs, missing dependency references, and cycles.
 
 ## Memory maintenance checklist
 

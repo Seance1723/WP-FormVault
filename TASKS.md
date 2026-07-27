@@ -1,7 +1,7 @@
 # WP FormVault Task Register
 
 Last updated: 2026-07-27  
-Current stage: Project controls initialized; plugin implementation has not started.
+Current stage: Foundation scaffold complete (`FND-001`); architecture/dependency definition is next.
 
 ## Purpose
 
@@ -33,6 +33,7 @@ This is the mandatory source of truth for WP FormVault work status. It decompose
 8. Do not silently broaden scope. Add a task or amend an existing task and record the change in the changelog first.
 9. When a completed task regresses, move it to `IN_PROGRESS` or `BLOCKED`, add a bug record, and retain the old evidence in history.
 10. Dates use `YYYY-MM-DD`; all runtime timestamps use UTC unless a display-time context explicitly requires the WordPress site timezone.
+11. After changing task dependencies, run `powershell -File tools/verify-task-graph.ps1`; missing task references and dependency cycles are not allowed.
 
 ## Completion evidence standard
 
@@ -82,7 +83,7 @@ Never use “implemented as planned” as evidence.
 |---|---|---|---|---|
 | ARCH-001 | Freeze project identifiers: name, slug, namespace, text domain, prefixes | `COMPLETE` | GOV-002 | See `MEMORY.md` Project identity. |
 | ARCH-002 | Define supported WordPress/PHP/database compatibility matrix | `READY` | ARCH-001 | Baseline: WP 6.2+, PHP 8.1+, MySQL 5.7+ or MariaDB 10.4+. Verify in CI. |
-| ARCH-003 | Define Composer dependency versions and conflict policy | `PLANNED` | FND-002 | PhpSpreadsheet, ZipStream, Action Scheduler. |
+| ARCH-003 | Define Composer dependency versions and conflict policy | `READY` | FND-001 | PhpSpreadsheet, ZipStream, Action Scheduler; dependency direction corrected by BUG-0001. |
 | ARCH-004 | Define service-container composition and module boundaries | `PLANNED` | FND-001 | Preserve dependency direction and testability. |
 | ARCH-005 | Define coding standards, static-analysis level, test layout, and CI matrix | `PLANNED` | FND-001 | WordPress coding standards required. |
 | ARCH-006 | Record architecture decisions that alter the implementation plan | `ACTIVE` | GOV-007 | Add dated decisions to `MEMORY.md`; update the plan if requirements change. |
@@ -91,7 +92,7 @@ Never use “implemented as planned” as evidence.
 
 | ID | Submodule / task | State | Depends on | Notes / evidence |
 |---|---|---|---|---|
-| FND-001 | Scaffold `wp-formvault.php`, module directories, autoloading, and constants | `READY` | ARCH-001 | No plugin code exists yet. |
+| FND-001 | Scaffold `wp-formvault.php`, module directories, autoloading, and constants | `COMPLETE` | ARCH-001 | Verified 2026-07-27 with PHP 8.2.31 container: all 3 PHP files pass `php -l`; `php tools/verify-foundation.php` passes constants, paths, namespace guard, and single autoloader registration; planned directories and legacy-name checks pass; `git diff --check` passes. |
 | FND-002 | Add Composer manifest and production dependency strategy | `PLANNED` | FND-001, ARCH-003 | Include reproducible install/build rules. |
 | FND-003 | Implement plugin bootstrap and service container | `PLANNED` | FND-001, ARCH-004 | Prevent work before compatibility/migration checks. |
 | FND-004 | Implement activator and per-site capability installation | `PLANNED` | DB-001, SEC-001 | Must support single site and multisite. |
@@ -122,11 +123,11 @@ Never use “implemented as planned” as evidence.
 | SEC-001 | Define roles and `wpfv_*` capability matrix | `PLANNED` | FND-001 | Administrator, Report Manager, Report Viewer, Form Manager. |
 | SEC-002 | Implement AccessScope and form/schedule access grants | `PLANNED` | DB-006, SEC-001 | Enforcement must live in repository/query paths. |
 | SEC-003 | Implement nonce and capability checks for every write action | `PLANNED` | SEC-001 | Cover admin, AJAX, REST, bulk, run-now, delete. |
-| SEC-004 | Implement prepared-query builders and schema-driven validation | `PLANNED` | DB-008 | No dynamic user values concatenated into SQL. |
+| SEC-004 | Implement prepared-query builders and schema-driven validation | `PLANNED` | DB-001 | No dynamic user values concatenated into SQL; dependency direction corrected by BUG-0001. |
 | SEC-005 | Implement context-aware sanitization and output escaping | `PLANNED` | FND-001 | Include `wp_kses` policy for HTML templates. |
 | SEC-006 | Implement strict REST/AJAX permission callbacks | `PLANNED` | SEC-002, SEC-003 | No unconditional callback except token-only public download route. |
-| SEC-007 | Implement guarded legacy metadata decoding with object rejection | `PLANNED` | ADAPTER-002 | Never deserialize untrusted objects. |
-| SEC-008 | Implement media-attachment-only branding validation | `PLANNED` | EXPORT-006 | No arbitrary server-side URL fetch. |
+| SEC-007 | Implement guarded legacy metadata decoding with object rejection | `PLANNED` | FND-001 | Never deserialize untrusted objects; adapter registry consumes this primitive (BUG-0001). |
+| SEC-008 | Implement media-attachment-only branding validation | `PLANNED` | FND-001 | No arbitrary server-side URL fetch; validation primitive precedes export branding (BUG-0001). |
 | SEC-009 | Build security regression suite for CSRF, XSS, SQLi, ACL leakage, SSRF, deserialization, and header injection | `PLANNED` | QA-001, SEC-002–SEC-008 | Link failures to `BUGS.md`. |
 
 ## QUEUE — Action Scheduler, jobs, concurrency, and recovery
@@ -312,7 +313,7 @@ Never use “implemented as planned” as evidence.
 |---|---|---|---|---|
 | AUDIT-001 | Implement append-only audit logger and event vocabulary | `PLANNED` | DB-005, FND-003 | Record actor, action, target, result, time, safe old/new metadata. |
 | AUDIT-002 | Audit permissions, schedules, submissions, reports, downloads, automation, and privacy events | `PLANNED` | AUDIT-001 | Cover success and failure where material. |
-| AUDIT-003 | Implement subject erasure pseudonymization | `PLANNED` | PRIVACY-003, AUDIT-001 | Preserve action history without subject PII. |
+| AUDIT-003 | Implement subject erasure pseudonymization | `PLANNED` | AUDIT-001 | Preserve action history without subject PII; privacy erasure consumes this primitive (BUG-0001). |
 | AUDIT-004 | Build capability-gated audit page and filters | `PLANNED` | ADMIN-001, AUDIT-001 | Escape all output. |
 | LOG-001 | Implement structured operational logger with PII redaction | `PLANNED` | FND-003 | No raw submission field values, tokens, passwords, or paths. |
 | LOG-002 | Implement configurable rotation/retention and diagnostic export | `PLANNED` | LOG-001 | Diagnostic export must remain redacted. |
@@ -432,4 +433,4 @@ No implementation blocker is currently confirmed. The following choices must be 
 
 ## Next executable task
 
-`FND-001` is `READY`: scaffold the WP FormVault plugin foundation. Before implementation begins, move it to `IN_PROGRESS`, then update the changelog and memory alongside the resulting code.
+`ARCH-003` is the recommended next task: define verified dependency versions and conflict/packaging policy so `FND-002` can implement the Composer manifest. `ARCH-002` also remains independently `READY`.
