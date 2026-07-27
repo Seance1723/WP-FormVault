@@ -1,7 +1,7 @@
 # WP FormVault Task Register
 
 Last updated: 2026-07-27  
-Current stage: Foundation dependency layer complete; service-container architecture is next (`ARCH-004`).
+Current stage: Service-container and module-boundary architecture complete; plugin bootstrap/container implementation is next (`FND-003`).
 
 ## Purpose
 
@@ -84,7 +84,7 @@ Never use “implemented as planned” as evidence.
 | ARCH-001 | Freeze project identifiers: name, slug, namespace, text domain, prefixes | `COMPLETE` | GOV-002 | See `MEMORY.md` Project identity. |
 | ARCH-002 | Define supported WordPress/PHP/database compatibility matrix | `COMPLETE` | ARCH-001 | Option A selected by the user on 2026-07-27: WordPress 6.5+, Action Scheduler 3.9.3, PHP 8.1+ on 64-bit, MySQL 5.7+ or MariaDB 10.4+. Verified under PHP 8.1.34 with compatibility/foundation checks and an acyclic 198-task/325-edge graph. The verifier now targets stable compatibility facts rather than mutable policy status. Full CI-matrix execution remains `ARCH-005`/`QA-001`. (`BUG-0005`, `BUG-0011`) |
 | ARCH-003 | Define Composer dependency versions and conflict policy | `COMPLETE` | FND-001 | Policy and first minimum-platform lock verified 2026-07-27. PhpSpreadsheet 5.8.1 is the last PHP 8.1 line; Action Scheduler 3.9.3 is the latest WordPress-6.5-compatible line; ZipStream remains 3.0.2. The lock-only build passed strict validation, audit, isolation, and runtime smoke tests. (`BUG-0006`, `BUG-0007`) |
-| ARCH-004 | Define service-container composition and module boundaries | `READY` | FND-001 | Preserve dependency direction and testability. |
+| ARCH-004 | Define service-container composition and module boundaries | `COMPLETE` | FND-001 | Accepted `Core\Plugin` composition root and `Core\ServiceContainer` contract, fail-closed startup sequence, explicit service scopes, 15-module/63-edge inward graph, public-surface rules, and ownership boundaries. Verified 2026-07-27 under PHP 8.1.34 with `php tools/verify-architecture.php`; all module directories/imports passed and the graph is acyclic by strict layer direction. |
 | ARCH-005 | Define coding standards, static-analysis level, test layout, and CI matrix | `PLANNED` | FND-001 | WordPress coding standards required. |
 | ARCH-006 | Record architecture decisions that alter the implementation plan | `ACTIVE` | GOV-007 | Add dated decisions to `MEMORY.md`; update the plan if requirements change. |
 
@@ -94,7 +94,7 @@ Never use “implemented as planned” as evidence.
 |---|---|---|---|---|
 | FND-001 | Scaffold `wp-formvault.php`, module directories, autoloading, and constants | `COMPLETE` | ARCH-001 | Verified 2026-07-27 with PHP 8.2.31 container: all 3 PHP files pass `php -l`; `php tools/verify-foundation.php` passes constants, paths, namespace guard, and single autoloader registration; planned directories and legacy-name checks pass; `git diff --check` passes. |
 | FND-002 | Add Composer manifest and production dependency strategy | `COMPLETE` | FND-001, ARCH-003 | Verified 2026-07-27 with normal lock-only `tools/run-dependency-build.ps1`: digest-pinned PHP 8.1.34/Composer 2.10.2; strict validate; no audit advisories; all platform requirements pass; seven runtime packages locked; Strauss correction counts Complex=42/Matrix=21/ZipStream=4; Action Scheduler 3.9.3 staged; notices generated; 722 generated PHP files linted; unprefixed-conflict, Complex/Matrix, and real XLSX/ZIP tests pass. Lock SHA-256: `5EAF5929FA2B30EE29FD8A134DA37DA2D79FAB86C05F20D15B6B9C8A06EC3E65`. (`BUG-0004`, `BUG-0007`–`BUG-0010`) |
-| FND-003 | Implement plugin bootstrap and service container | `PLANNED` | FND-001, ARCH-004 | Prevent work before compatibility/migration checks. |
+| FND-003 | Implement plugin bootstrap and service container | `READY` | FND-001, ARCH-004 | Implement the accepted architecture contract; prevent product work before dependency, compatibility, and migration gates. |
 | FND-004 | Implement activator and per-site capability installation | `PLANNED` | DB-001, SEC-001 | Must support single site and multisite. |
 | FND-005 | Implement deactivator: unschedule events and clear locks, preserve data | `PLANNED` | QUEUE-001, QUEUE-004 | Verify no data deletion. |
 | FND-006 | Implement guarded uninstall with delete-data setting defaulting OFF | `PLANNED` | DB-001, CLEANUP-001, MULTISITE-003 | Test both preservation and deletion modes. |
@@ -146,7 +146,7 @@ Never use “implemented as planned” as evidence.
 
 | ID | Submodule / task | State | Depends on | Notes / evidence |
 |---|---|---|---|---|
-| ADAPTER-001 | Define base, datastore, and capture adapter interfaces | `PLANNED` | ARCH-004 | Capabilities are explicit, not inferred. |
+| ADAPTER-001 | Define base, datastore, and capture adapter interfaces | `READY` | ARCH-004 | Capabilities are explicit, not inferred; sequence after the foundation bootstrap unless explicitly reprioritized. |
 | ADAPTER-002 | Implement adapter registry, detection, version checks, and safe degradation | `PLANNED` | ADAPTER-001, SEC-007 | Unknown versions degrade to read-only with warning. |
 | ADAPTER-003 | Implement normalized field vocabulary and stable field identity | `PLANNED` | ADAPTER-001 | Labels never serve as mapping identifiers. |
 | ADAPTER-004 | Normalize arrays, repeaters, files, signatures, payments, dates, and system fields | `PLANNED` | ADAPTER-003 | Preserve canonical structured JSON. |
@@ -432,4 +432,4 @@ No confirmed implementation blocker remains. The following choices stay within t
 
 ## Next executable task
 
-`ARCH-004` is `READY`: define service-container composition, module boundaries, and dependency direction before implementing `FND-003`.
+`FND-003` is the recommended `READY` task: implement the accepted plugin bootstrap/container contract and prove its fail-closed gates. `ADAPTER-001` is also dependency-ready but follows the foundation bootstrap in the planned delivery order.

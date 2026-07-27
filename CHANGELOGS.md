@@ -35,6 +35,8 @@ All material project changes are recorded here. This file follows the spirit of 
 - Added dependency platform preflight, safe generated-tree cleanup, Strauss namespace isolation, Action Scheduler 3.9.3 staging, exact-version checks, and deliberate cross-plugin conflict verification. (`FND-002`)
 - Added an isolated PhpSpreadsheet XLSX-write/ZIP-structure smoke test and Composer lock platform-requirement check to the dependency build gate. (`FND-002`)
 - Added deterministic runtime dependency/license notices and syntax verification for every generated prefixed and Action Scheduler PHP file. (`FND-002`)
+- Added the service-container composition contract, fail-closed startup phases, service scope rules, public cross-module surfaces, and ownership boundaries for all 15 modules. (`ARCH-004`)
+- Added a machine-readable 15-module dependency graph and PHP architecture verifier that enforces 63 inward edges, terminal transport modules, declared module directories, public cross-module imports, and composition-root-only container access. (`ARCH-004`)
 
 ### Changed
 
@@ -46,6 +48,7 @@ All material project changes are recorded here. This file follows the spirit of 
 - Defined PhpSpreadsheet `~5.8.1` (the last PHP 8.1-compatible line), ZipStream `~3.0.2`, Action Scheduler `~3.9.3`, lock/platform rules, and build-only Strauss 0.28.1 as the dependency baseline. (`ARCH-003`, `BUG-0007`, `BUG-0008`)
 - Raised the required WordPress version from 6.2 to 6.5 and selected Action Scheduler 3.9.3 after explicit user approval, resolving the dependency compatibility conflict. (`ARCH-002`, `ARCH-003`, `BUG-0005`)
 - Replaced reliance on the incomplete shared PHP environment with a repository-owned, digest-pinned dependency build and completed the first audited PHP 8.1 lock. (`FND-002`, `BUG-0004`)
+- Established `WPFormVault\Core\Plugin` as the sole composition root and `WPFormVault\Core\ServiceContainer` as the explicit, frozen, request/site-scoped container contract required by `FND-003`. (`ARCH-004`)
 
 ### Deprecated
 

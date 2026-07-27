@@ -1,0 +1,194 @@
+{
+    "schema_version": 1,
+    "owning_task": "ARCH-004",
+    "composition_root": {
+        "class": "WPFormVault\\Core\\Plugin",
+        "path": "includes/Core/Plugin.php"
+    },
+    "container": {
+        "class": "WPFormVault\\Core\\ServiceContainer",
+        "path": "includes/Core/ServiceContainer.php"
+    },
+    "public_cross_module_surfaces": [
+        "Contracts",
+        "DTO",
+        "Events",
+        "Value"
+    ],
+    "terminal_modules": [
+        "Admin",
+        "Rest"
+    ],
+    "unscoped_files": [
+        "includes/Autoloader.php"
+    ],
+    "modules": {
+        "Core": {
+            "path": "includes/Core",
+            "layer": 0,
+            "depends_on": [],
+            "purpose": "Composition primitives, compatibility and migration gates, database/settings abstractions, logging, locks, clock, randomness, and shared contracts."
+        },
+        "Adapters": {
+            "path": "includes/Adapters",
+            "layer": 1,
+            "depends_on": [
+                "Core"
+            ],
+            "purpose": "Typed source-plugin contracts, capability declarations, normalization, feature detection, and adapter registry."
+        },
+        "Audit": {
+            "path": "includes/Audit",
+            "layer": 1,
+            "depends_on": [
+                "Core"
+            ],
+            "purpose": "Security-relevant and business audit recording through redacted, immutable event contracts."
+        },
+        "Submissions": {
+            "path": "includes/Submissions",
+            "layer": 2,
+            "depends_on": [
+                "Core",
+                "Adapters",
+                "Audit"
+            ],
+            "purpose": "Normalized submission repository, access-scoped queries, editing, trash, bulk actions, and saved views."
+        },
+        "Email": {
+            "path": "includes/Email",
+            "layer": 2,
+            "depends_on": [
+                "Core",
+                "Audit"
+            ],
+            "purpose": "Transport-neutral queued email composition, recipient/header safety, handoff, and delivery-attempt logging."
+        },
+        "Sync": {
+            "path": "includes/Sync",
+            "layer": 3,
+            "depends_on": [
+                "Core",
+                "Adapters",
+                "Submissions",
+                "Audit"
+            ],
+            "purpose": "Real-time indexing, bounded datastore reconciliation, capture integrity, cursor state, and sync orchestration."
+        },
+        "Workflow": {
+            "path": "includes/Workflow",
+            "layer": 3,
+            "depends_on": [
+                "Core",
+                "Submissions",
+                "Audit"
+            ],
+            "purpose": "Status, tags, assignments, notes, priority, follow-up, and guarded automation rules."
+        },
+        "Reports": {
+            "path": "includes/Reports",
+            "layer": 4,
+            "depends_on": [
+                "Core",
+                "Submissions",
+                "Workflow",
+                "Audit"
+            ],
+            "purpose": "Report snapshots, access-scoped datasets, mappings, XLSX/CSV generation, sanitization, and report history."
+        },
+        "Notifications": {
+            "path": "includes/Notifications",
+            "layer": 4,
+            "depends_on": [
+                "Core",
+                "Submissions",
+                "Workflow",
+                "Email",
+                "Audit"
+            ],
+            "purpose": "In-app, email, and digest notifications driven by explicit domain events and user preferences."
+        },
+        "Downloads": {
+            "path": "includes/Downloads",
+            "layer": 5,
+            "depends_on": [
+                "Core",
+                "Reports",
+                "Audit"
+            ],
+            "purpose": "Authenticated/token download authorization, token hashing, throttling, revocation, and download logging."
+        },
+        "Privacy": {
+            "path": "includes/Privacy",
+            "layer": 5,
+            "depends_on": [
+                "Core",
+                "Submissions",
+                "Workflow",
+                "Reports",
+                "Audit"
+            ],
+            "purpose": "WordPress personal-data export, erasure, anonymization, and privacy-aware report/reference handling."
+        },
+        "Scheduling": {
+            "path": "includes/Scheduling",
+            "layer": 6,
+            "depends_on": [
+                "Core",
+                "Reports",
+                "Email",
+                "Downloads",
+                "Audit"
+            ],
+            "purpose": "Calendar-safe intended windows, catch-up, queue dispatch, retries, locks, and report-delivery orchestration."
+        },
+        "Health": {
+            "path": "includes/Health",
+            "layer": 7,
+            "depends_on": [
+                "Core",
+                "Adapters",
+                "Sync",
+                "Scheduling",
+                "Audit"
+            ],
+            "purpose": "Read-only Site Health diagnostics for integrations, queue/cron, storage, migrations, and operational readiness."
+        },
+        "Rest": {
+            "path": "includes/Rest",
+            "layer": 8,
+            "depends_on": [
+                "Core",
+                "Submissions",
+                "Workflow",
+                "Reports",
+                "Scheduling",
+                "Downloads",
+                "Notifications",
+                "Privacy",
+                "Audit"
+            ],
+            "purpose": "Inbound REST/AJAX transport, schema validation, permission callbacks, and translation to application contracts."
+        },
+        "Admin": {
+            "path": "includes/Admin",
+            "layer": 9,
+            "depends_on": [
+                "Core",
+                "Adapters",
+                "Sync",
+                "Submissions",
+                "Workflow",
+                "Reports",
+                "Scheduling",
+                "Email",
+                "Downloads",
+                "Notifications",
+                "Audit",
+                "Privacy",
+                "Health"
+            ],
+            "purpose": "WordPress admin presentation, navigation, forms, notices, and page-level orchestration without business persistence logic."
+        }
+    }
+}

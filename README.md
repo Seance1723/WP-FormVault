@@ -2,7 +2,18 @@
 
 WP FormVault is a planned adapter-driven WordPress plugin for centralized form-submission indexing, reporting, scheduling, workflow, export, and secure delivery across supported form plugins.
 
-Current status: the guarded plugin entry file, foundation constants, internal namespace autoloader, compatibility profile, Composer lock, isolated dependency build, and planned module directories are implemented and verified. Service startup, activation, database, queue integration, adapters, and product features are not implemented yet.
+Current status: the guarded plugin entry file, foundation constants, internal namespace autoloader, compatibility profile, Composer lock, isolated dependency build, planned module directories, and enforceable service-container/module-boundary architecture are implemented and verified. The runtime service container, service startup, activation, database, queue integration, adapters, and product features are not implemented yet.
+
+## Architecture verification
+
+The accepted architecture uses `WPFormVault\Core\Plugin` as the sole composition root and `WPFormVault\Core\ServiceContainer` as a small explicit-dependency container. The 15-module, 63-edge dependency graph is machine-readable and enforced against current PHP imports.
+
+```powershell
+php tools/verify-architecture.php
+powershell -NoProfile -ExecutionPolicy Bypass -File tools/verify-task-graph.ps1
+```
+
+The architecture verifier rejects outward/cyclic layer edges, undeclared modules, private cross-module imports, and container references outside the composition boundary. Runtime implementation and behavioral tests remain `FND-003`.
 
 ## Dependency build
 
@@ -28,4 +39,6 @@ The script builds a digest-pinned PHP 8.1/Composer 2.10 image, verifies required
 - [Bug register](./BUGS.md)
 - [Project memory](./MEMORY.md)
 - [Dependency and packaging policy](./docs/architecture/dependency-policy.md)
+- [Service-container and module-boundary architecture](./docs/architecture/service-container-and-module-boundaries.md)
+- [Machine-readable module graph](./docs/architecture/module-boundaries.json)
 - [Repository instructions](./AGENTS.md)

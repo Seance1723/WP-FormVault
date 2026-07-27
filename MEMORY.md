@@ -1,7 +1,7 @@
 # WP FormVault Project Memory
 
 Last updated: 2026-07-27  
-Memory status: Current for the verified foundation scaffold and selected dependency-architecture baseline.
+Memory status: Current for the verified foundation scaffold, dependency baseline, and accepted service-container/module-boundary architecture.
 
 ## How to use this memory
 
@@ -57,7 +57,7 @@ Never:
 
 ## Current project state
 
-**Current:** The workspace contains the canonical plan/control documents, a verified WordPress plugin foundation scaffold, and the implemented Composer dependency build/isolation layer. The scaffold defines plugin metadata/constants, registers the internal namespace autoloader, and tracks the planned module directories. It does not yet start product services or load third-party services from the plugin bootstrap. There is no service container, activation lifecycle, database migration, PHPUnit/CI framework, production ZIP, or release.
+**Current:** The workspace contains the canonical plan/control documents, a verified WordPress plugin foundation scaffold, the implemented Composer dependency build/isolation layer, and an enforceable service-container/module-boundary architecture contract. The scaffold defines plugin metadata/constants, registers the internal namespace autoloader, and tracks the planned module directories. It does not yet instantiate the documented service container, start product services, or load third-party services from the plugin bootstrap. There is no runtime service container, activation lifecycle, database migration, PHPUnit/CI framework, production ZIP, or release.
 
 **Current completed controls:**
 
@@ -72,12 +72,14 @@ Never:
 - `composer.json` and `composer.lock` define the PHP 8.1-compatible runtime graph and build-only Strauss tooling.
 - `tools/run-dependency-build.ps1` builds through the digest-pinned PHP 8.1.34 / Composer 2.10.2 image, without modifying the shared local WordPress container.
 - The lock-only dependency build validates/audits the lock, verifies platform requirements, generates the isolated tree, stages Action Scheduler, generates notices, lints 722 PHP files, and passes conflict plus XLSX/ZIP/Complex/Matrix runtime tests.
+- `docs/architecture/service-container-and-module-boundaries.md` defines the composition root, fail-closed startup gates, container scope, public module surfaces, interaction rules, and ownership boundaries.
+- `docs/architecture/module-boundaries.json` records the 15-module/63-edge inward dependency graph; `tools/verify-architecture.php` validates that graph and current PHP imports.
 - `tools/verify-foundation.php` passes in the local PHP 8.2.31 container.
 - `tools/verify-task-graph.ps1` validates all 198 tasks and 325 dependency edges with no missing references or cycles.
 
-**Current blockers:** None confirmed for the next architecture task. `BUG-0004` through `BUG-0011` are closed with reproducible evidence.
+**Current blockers:** None confirmed for the next foundation task. `BUG-0004` through `BUG-0011` are closed with reproducible evidence.
 
-**Recommended next task:** `ARCH-004` — define service-container composition and module dependency direction before `FND-003`.
+**Recommended next task:** `FND-003` — implement the documented plugin bootstrap and service container without starting schema-dependent product services.
 
 ## Project identity
 
@@ -119,6 +121,22 @@ The WordPress minimum intentionally changed from the original 6.2 plan baseline 
 - Composer manifest/lock and generated dependency tooling are implemented. Loading the isolated runtime autoloader and composing services remains `FND-003`; integrating Action Scheduler runtime hooks remains `QUEUE-001`.
 - Module directories mirror the hardened plan: Core, Adapters, Sync, Submissions, Workflow, Reports, Scheduling, Email, Downloads, Privacy, Notifications, Audit, Rest, Health, and Admin, plus assets, languages, and templates.
 - The standalone verifier uses only non-production WordPress stubs and must not be loaded by WordPress.
+
+## Service-container and module-boundary baseline
+
+**Current architecture contract; runtime implementation is still planned:**
+
+- `WPFormVault\Core\Plugin` is the sole application composition root and the only production class allowed to import concrete implementations from every module for wiring.
+- `WPFormVault\Core\ServiceContainer` will be a small project-owned container: explicit factories/values, no reflection auto-wiring, lazy request/site-scoped shared services, controlled transient factories, circular/missing/duplicate detection, and freeze before hook registration.
+- Feature services never receive the container, a generic resolver, or `Core\Plugin`; they receive exact constructor dependencies.
+- Boot is fail closed in this order: entry/autoload guards, dependency availability, early Action Scheduler registration without early API calls, platform compatibility, per-site schema/migration gate, definition validation/freeze, then idempotent product-hook registration.
+- Cross-module imports are limited to the provider's `Contracts`, `DTO`, `Events`, and `Value` namespaces. Concrete cross-module wiring is restricted to the composition root.
+- `Core` is the innermost module. Dependencies point to strictly lower layers. `Admin` and `Rest` are terminal inbound modules and no feature module may depend on them.
+- AccessScope remains a repository/query-layer concern; presentation and transport modules cannot construct SQL or bypass scope.
+- Container sharing is confined to one PHP request and current site. Multisite blog switches require a target-site graph and guaranteed restoration.
+- Module graph changes must update the architecture document and machine-readable graph and pass `php tools/verify-architecture.php`.
+
+The accepted graph contains 15 modules and 63 explicitly allowed dependencies. Omitted edges are forbidden; being acyclic alone does not authorize a dependency.
 
 ## Dependency and packaging baseline
 
@@ -445,6 +463,10 @@ Action Scheduler 4.0.0 was subsequently confirmed as the current upstream releas
 WP FormVault resolves and verifies dependencies in a digest-pinned PHP 8.1.34 / Composer 2.10.2 image rather than changing the shared WordPress container. Normal builds install only from the committed lock; lock updates require the explicit `-UpdateLock` switch.
 
 The current lock has seven runtime packages. Generic libraries are isolated under `WPFormVault\Vendor`; Action Scheduler 3.9.3 is staged unprefixed. The build fails on missing extensions, invalid/stale locks, advisories, platform mismatches, generated syntax errors, unprefixed conflicts, wrong package versions, ambiguous homonym return types, or invalid XLSX output.
+
+### 2026-07-27 — Explicit composition root and enforceable module graph
+
+`WPFormVault\Core\Plugin` is the sole composition root and `WPFormVault\Core\ServiceContainer` is the planned explicit, frozen, request/site-scoped container. Feature services use constructor injection and cannot resolve arbitrary services. The accepted 15-module graph permits only documented inward dependencies and public `Contracts`, `DTO`, `Events`, or `Value` surfaces; `Admin` and `Rest` remain terminal inbound modules. A machine-readable graph and source verifier enforce this architecture before `FND-003`.
 
 ## Memory maintenance checklist
 

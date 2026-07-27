@@ -258,6 +258,16 @@ wp-formvault/
               woocommerce/action-scheduler }       # [NEW] zipstream, action-scheduler
 ```
 
+### 4.2 Service composition and module dependency contract **[HARDENED]**
+
+`WPFormVault\Core\Plugin` is the sole application composition root. It wires concrete implementations into the small project-owned `WPFormVault\Core\ServiceContainer`; feature services receive exact constructor dependencies and never receive the container or a generic resolver.
+
+Startup is fail closed: entry/autoload guards, packaged-dependency availability, early Action Scheduler registration without early API use, platform compatibility, and the per-site schema/migration gate all pass before the container is frozen and product hooks are registered. Constructors and service-definition factories do not perform database writes, queue work, email, filesystem mutation, or remote calls.
+
+Modules depend only on explicitly approved inward layers and import another module only through its reviewed `Contracts`, `DTO`, `Events`, or `Value` namespaces. `Admin` and `Rest` are terminal inbound modules; repositories and application services contain business/persistence logic and query-layer AccessScope enforcement.
+
+The complete ownership rules, lifecycle, service scopes, allowed dependency edges, and implementation acceptance criteria are defined in `docs/architecture/service-container-and-module-boundaries.md`. The authoritative machine-readable graph is `docs/architecture/module-boundaries.json` and is enforced by `tools/verify-architecture.php`.
+
 ---
 
 ## 5. Hybrid Data Model
