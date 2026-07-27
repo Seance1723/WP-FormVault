@@ -1,7 +1,7 @@
 # WP FormVault Project Memory
 
 Last updated: 2026-07-27  
-Memory status: Current for the verified foundation scaffold, dependency baseline, implemented base container/bootstrap, enforced module architecture, and accepted engineering-quality/CI policy.
+Memory status: Current for the verified foundation scaffold, dependency baseline, implemented base container/bootstrap, enforced module architecture, and implemented engineering-quality/CI toolchain.
 
 ## How to use this memory
 
@@ -57,7 +57,7 @@ Never:
 
 ## Current project state
 
-**Current:** The workspace contains the canonical plan/control documents, a verified WordPress plugin foundation, the implemented Composer dependency build/isolation layer, the explicit base service container, a fail-closed composition root, an enforceable module-boundary contract, and an accepted engineering-quality/CI policy. The bootstrap loads the isolated dependency tree, registers the bundled Action Scheduler loader without early API calls, verifies runtime compatibility, and intentionally stops at the pending schema gate. No schema-dependent product hook registrar starts. There is no activation lifecycle, database migration/schema, product queue integration, installed PHPUnit/PHPCS/PHPStan framework, hosted CI workflow, production ZIP, or release.
+**Current:** The workspace contains the canonical plan/control documents, a verified WordPress plugin foundation, the implemented Composer dependency build/isolation layer, the explicit base service container, a fail-closed composition root, an enforceable module-boundary contract, and the installed engineering-quality/test toolchain with GitHub Actions workflow definitions. The bootstrap loads the isolated dependency tree, registers the bundled Action Scheduler loader without early API calls, verifies runtime compatibility, and intentionally stops at the pending schema gate. No schema-dependent product hook registrar starts. There is no activation lifecycle, database migration/schema, product queue integration, production ZIP, or release. The workflow files exist and are locally verified, but no immutable hosted GitHub Actions run is recorded in this workspace.
 
 **Current completed controls:**
 
@@ -76,13 +76,17 @@ Never:
 - `docs/architecture/module-boundaries.json` records the 15-module/63-edge inward dependency graph; `tools/verify-architecture.php` validates that graph and current PHP imports.
 - `includes/Core/ServiceContainer.php` implements explicit values, lazy shared factories, transient factories, aliases, type checks, circular/missing/duplicate detection, site identity, and immutable freeze.
 - `includes/Core/Plugin.php` implements the idempotent composition root and ordered dependency, compatibility, and schema gates; `tools/verify-bootstrap.php` exercises its positive and negative paths under PHP 8.1.
-- `docs/architecture/engineering-quality-and-ci-policy.md` and `quality-policy.json` define the accepted coding rules, static-analysis floor, test taxonomy, and nine-lane CI matrix; `tools/verify-quality-policy.php` validates stable policy contracts without pretending the pending QA toolchain is installed.
+- `docs/architecture/engineering-quality-and-ci-policy.md` and `quality-policy.json` define the implemented coding rules, static-analysis floor, test taxonomy, and nine-lane CI matrix.
+- The root lock contains PHPUnit 9.6.35, PHPUnit Polyfills 3.1.2, WPCS 3.4.1 on PHPCS 3.13.5, PHPStan 2.2.6, and WordPress 6.5.7 stubs. PHPCompatibilityWP 3.0.0-alpha2 is isolated with PHPCS 4.0.1 under `tools/phpcompatibility/` because its current PHPCS requirement conflicts with stable WPCS.
+- Unit and WordPress-backed PHPUnit bootstraps are separate. The WordPress runner downloads an exact/latest/trunk runtime into a validated temporary directory, installs the matching `wp-phpunit` harness, uses an ephemeral environment-configured database, logs resolved versions, and supports explicit single-site/multisite suites.
+- `.github/workflows/quality.yml`, `forward-compatibility.yml`, and `release-candidate-performance.yml` implement the nine policy lane IDs. `tools/verify-quality-policy.php` validates the stable contract; `tools/verify-qa-tooling.php` cross-checks the locked tools, configurations, suite names, Docker prerequisites, and workflow job identities.
+- Local QA evidence on 2026-07-27: WPCS and PHPCompatibilityWP passed 36 first-party PHP files; PHPStan level 8 reported no errors; PHPUnit unit tests passed; actionlint 1.7.12 accepted all workflows; WordPress 6.5 single-site integration/security and multisite integration/functional harnesses passed under PHP 8.1.34 and MySQL 5.7.44. This local evidence does not substitute for hosted lane evidence.
 - `tools/verify-foundation.php` passes in the local PHP 8.2.31 container.
 - `tools/verify-task-graph.ps1` validates all 198 tasks and 325 dependency edges with no missing references or cycles.
 
-**Current blockers:** None confirmed for `QA-001`. The production root's `blocked_schema` state is intentional until `DB-002`; it is not evidence of a working database migration. `BUG-0004` through `BUG-0013` are closed with reproducible evidence.
+**Current blockers:** None confirmed for the next database-design task. The production root's `blocked_schema` state is intentional until `DB-002`; it is not evidence of a working database migration.
 
-**Recommended next task:** `QA-001` — install and configure the accepted PHPUnit, WordPress integration, PHPCS/WPCS, PHPCompatibilityWP, PHPStan, and hosted-CI quality gates before expanding runtime modules.
+**Recommended next task:** `DB-001` — define schema versioning and the per-site migration-state model before implementing the migration framework.
 
 ## Project identity
 
@@ -107,9 +111,9 @@ The example table `wp_wpfv_submissions` means `$wpdb->prefix . 'wpfv_submissions
 | Component | Minimum | Status |
 |---|---:|---|
 | WordPress | 6.5 | Required/frozen by user decision on 2026-07-27 |
-| PHP | 8.1, 64-bit | Required/frozen; CI execution remains `QA-001` |
-| MySQL | 5.7 | Required/frozen; verify in CI |
-| MariaDB | 10.4 | Required/frozen; verify in CI |
+| PHP | 8.1, 64-bit | Required/frozen; local PHP 8.1 QA passed and PHP 8.2–8.5 hosted lanes are configured |
+| MySQL | 5.7 | Required/frozen; WordPress 6.5 local minimum lane passed on MySQL 5.7.44 |
+| MariaDB | 10.4 | Required/frozen; minimum hosted lane configured, immutable hosted evidence pending |
 | Action Scheduler | 3.9.3 | Required dependency baseline |
 
 The WordPress minimum intentionally changed from the original 6.2 plan baseline so the bundled Action Scheduler 3.9.3 dependency is supported.
@@ -144,15 +148,15 @@ The accepted graph contains 15 modules and 63 explicitly allowed dependencies. O
 
 ## Engineering quality and CI baseline
 
-**Current accepted policy; tooling remains planned under `QA-001`:**
+**Current implemented policy and QA-001 tooling:**
 
 - PHP_CodeSniffer applies `WordPress-Core`, `WordPress-Docs`, `WordPress-Extra`, and `PHPCompatibilityWP` with the PHP range `8.1-` to first-party PHP.
 - PHPStan analyzes `wp-formvault.php` and `includes/` at level 8 with WordPress/Action Scheduler stubs, unmatched ignores reported, and no generated baseline.
-- The planned test tree separates Unit, Integration, Functional, Security, Performance, Support, and synthetic/redacted Fixtures. Unit tests do not load WordPress; integration tests use dedicated ephemeral databases.
-- The accepted matrix has nine lanes, eight blocking: minimum/latest quality, exact WordPress 6.5.0 + PHP 8.1 on MySQL 5.7 and MariaDB 10.4, current WordPress across the upstream-supported PHP band, current MariaDB multisite, minimum dependency build, nightly WordPress trunk, and release-candidate performance.
+- The test tree separates Unit, Integration, Functional, Security, Performance, Support, and synthetic/redacted Fixtures. Unit tests do not load WordPress; integration tests use dedicated ephemeral databases.
+- The GitHub Actions matrix has nine lane IDs, eight blocking: minimum/latest quality, exact WordPress 6.5.0 + PHP 8.1 on MySQL 5.7 and MariaDB 10.4, current WordPress across the upstream-supported PHP band, current MariaDB multisite, minimum dependency build, nightly WordPress trunk, and release-candidate performance.
 - Rolling labels resolve at job start and the exact WordPress/PHP/database/tool versions must appear in durable logs. Missing, skipped, cancelled, or unresolved blocking lanes count as failures.
-- The 2026-07-27 upstream snapshot records WordPress 7.0.2 as latest stable, PHP 8.2–8.5 as supported, PHP 8.1 as end-of-life legacy product coverage, and PHPUnit 10 as the common PHP-8.1-compatible major.
-- `tools/verify-quality-policy.php` verifies the policy contract only. Until `QA-001` installs and runs the tools/workflows, do not claim the code passes PHPCS, PHPStan, PHPUnit, WordPress integration, or hosted CI.
+- The 2026-07-27 upstream snapshot records WordPress 7.0.2 as latest stable, PHP 8.2–8.5 as supported, PHP 8.1 as end-of-life legacy product coverage, and PHPUnit 9 as the common runner required by the official WordPress 6.5–7.0 test-suite matrix (`BUG-0015`).
+- `tools/verify-quality-policy.php` verifies the stable contract and `tools/verify-qa-tooling.php` verifies installed locks/configurations/workflow identities. Local tools and minimum WordPress/MySQL harnesses have passing evidence; do not claim hosted CI passed until immutable GitHub Actions runs exist.
 
 See `docs/architecture/engineering-quality-and-ci-policy.md` for rationale and `docs/architecture/quality-policy.json` for the authoritative machine-readable matrix.
 
@@ -439,7 +443,6 @@ The hardened plan contains eleven phases:
 
 These are deliberately not guessed:
 
-- CI provider and precise WordPress/PHP/database test matrix beyond minimum compatibility.
 - Advanced CF7 DB versions/products included in the initial adapter scope.
 - Exact custom recurrence grammar and safety limits.
 - Final operational defaults for batch sizes, row caps, ZIP caps, queue concurrency, log retention, and brute-force thresholds after benchmarking.
@@ -491,6 +494,10 @@ The current lock has seven runtime packages. Generic libraries are isolated unde
 ### 2026-07-27 — Base runtime boot remains schema-gated
 
 The entry file now delegates to the idempotent composition root. It loads the locked isolated runtime, registers Action Scheduler for WordPress-wide arbitration without calling its APIs early, checks platform compatibility, and then stops at `blocked_schema` through `PendingSchemaGate`. This is intentionally fail closed: `DB-002` must replace the pending gate before any schema-dependent hook registrar can start. The container implementation is usable and verified independently with injected passing gates, but that test path is not a claim that the database or product services exist.
+
+### 2026-07-27 — Quality toolchain and GitHub Actions matrix implemented
+
+QA uses PHPUnit 9.6 for both pure unit and official WordPress 6.5–7.0 harness compatibility, WPCS/PHPCS 3 for WordPress standards, a separate PHPCS 4 installation for the current alpha PHPCompatibilityWP stack, and PHPStan level 8 with minimum-WordPress stubs and no baseline. GitHub Actions is the selected hosted CI provider; all nine accepted lane IDs are defined across blocking, nightly informational, and release-candidate workflows. Workflow presence is not a passing hosted run, so release evidence must still link immutable successful GitHub Actions executions.
 
 ## Memory maintenance checklist
 

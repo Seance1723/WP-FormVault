@@ -1,6 +1,7 @@
 /vendor/
 /vendor-prefixed/
 /libraries/action-scheduler/
+/tools/phpcompatibility/vendor/
 /build/
 /.composer-cache/
 /.phpunit.cache/

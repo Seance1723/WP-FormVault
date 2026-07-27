@@ -43,6 +43,9 @@ All material project changes are recorded here. This file follows the spirit of 
 - Added the accepted engineering-quality policy covering WordPress coding standards, PHPCompatibilityWP `8.1-`, PHPStan level 8 without a generated baseline, deterministic/redacted test conventions, and a seven-area test layout. (`ARCH-005`)
 - Added a machine-readable nine-lane CI contract with exact minimum MySQL/MariaDB coverage, the current supported PHP band, latest stable WordPress, multisite, dependency-build, nightly WordPress-trunk, and release-candidate performance gates. (`ARCH-005`)
 - Added an automated quality-policy verifier that detects drift in platform floors, coding rulesets, analysis strictness, test isolation, lane identity, and blocking status without claiming that the pending `QA-001` tooling exists. (`ARCH-005`)
+- Added the locked QA toolchain: PHPUnit 9.6.35 with PHPUnit Polyfills, WPCS 3.4.1/PHPCS 3.13.5, PHPStan 2.2.6 with WordPress 6.5.7 stubs, and a separately locked PHPCS 4/PHPCompatibilityWP 3 alpha scanner to avoid incompatible PHPCS dependency graphs. (`QA-001`)
+- Added isolated unit and WordPress-backed PHPUnit bootstraps, synthetic fixtures, explicit integration/functional/security/performance suites, exact/latest/trunk WordPress resolution, dedicated database configuration, and single-site/multisite harness coverage. (`QA-001`)
+- Added GitHub Actions implementations for all nine accepted quality/integration/dependency/nightly/performance lane IDs plus an anti-drift verifier that cross-checks locked tools, configurations, test suites, Docker prerequisites, and workflow identities. (`QA-001`)
 
 ### Changed
 
@@ -57,6 +60,8 @@ All material project changes are recorded here. This file follows the spirit of 
 - Established `WPFormVault\Core\Plugin` as the sole composition root and `WPFormVault\Core\ServiceContainer` as the explicit, frozen, request/site-scoped container contract required by `FND-003`. (`ARCH-004`)
 - Advanced the plugin entry boundary to load packaged dependencies and run the base composition root; production startup intentionally stops at `blocked_schema` until the migration task replaces `PendingSchemaGate`. (`FND-003`)
 - Expanded the hardened plan and repository orientation with the accepted quality/CI contract, a dated WordPress 7.0.2 and PHP support reference snapshot, and explicit separation between policy completion (`ARCH-005`) and tool/workflow implementation (`QA-001`). (`ARCH-005`)
+- Expanded the pinned PHP 8.1 QA image with `curl` and `mysqli` so the repository-owned environment can download isolated WordPress test runtimes and connect to ephemeral MySQL/MariaDB services. (`QA-001`)
+- Advanced the engineering-quality policy from accepted-only to implemented tooling while retaining the release rule that workflow presence is not evidence of a successful hosted run. (`QA-001`)
 
 ### Deprecated
 
@@ -82,6 +87,9 @@ All material project changes are recorded here. This file follows the spirit of 
 - Corrected the WordPress `add_action()` test stubs to accept deferred callback strings, matching WordPress behavior and allowing Action Scheduler's early version-registration callback to load. (`BUG-0012`)
 - Corrected the final dependency-build verification window after measuring a 305.9-second clean Windows bind-mount run; documented a 420-second minimum and project-container inspection after interruption. (`BUG-0013`)
 - Kept the frozen compatibility-memory rows separate from dated rolling CI reference data after the compatibility verifier caught documentation drift. (`ARCH-005`, `BUG-0014`)
+- Corrected the common PHPUnit runner from generic PHP-compatible major 10 to WordPress-harness-compatible major 9 after checking the official WordPress 6.5–7.0 matrix. (`ARCH-005`, `QA-001`, `BUG-0015`)
+- Corrected the initial WordPress smoke tests to assert a declared plugin constant and establish an administrator capability context before testing protected diagnostic output. (`QA-001`, `BUG-0016`)
+- Corrected and guarded the lowercase `wordpress` machine key in the quality-policy verifier after automatic prose capitalization made implemented-state verification fail. (`ARCH-005`, `QA-001`, `BUG-0017`)
 
 ### Security
 

@@ -35,32 +35,72 @@ final class Plugin {
 
 	public const STATE_READY = 'ready';
 
+	/**
+	 * Request-local production composition root.
+	 *
+	 * @var self|null
+	 */
 	private static ?self $instance = null;
 
+	/**
+	 * Request/site service graph.
+	 *
+	 * @var ServiceContainer
+	 */
 	private ServiceContainer $container;
 
+	/**
+	 * Packaged dependency gate result.
+	 *
+	 * @var GateResult
+	 */
 	private GateResult $dependency_status;
 
+	/**
+	 * Runtime compatibility gate.
+	 *
+	 * @var GateInterface
+	 */
 	private GateInterface $compatibility_gate;
 
+	/**
+	 * Per-site schema gate.
+	 *
+	 * @var GateInterface
+	 */
 	private GateInterface $schema_gate;
 
+	/**
+	 * Safe bootstrap failure reporter.
+	 *
+	 * @var DiagnosticSinkInterface
+	 */
 	private DiagnosticSinkInterface $diagnostics;
 
 	/**
+	 * Product hook registrar service identifiers.
+	 *
 	 * @var string[]
 	 */
 	private array $hook_registrar_ids;
 
+	/**
+	 * Current terminal or pending bootstrap state.
+	 *
+	 * @var string
+	 */
 	private string $state = self::STATE_NEW;
 
 	/**
-	 * @param ServiceContainer       $container            Request/site service graph.
-	 * @param GateResult             $dependency_status    Packaged dependency result.
-	 * @param GateInterface          $compatibility_gate   Runtime compatibility gate.
-	 * @param GateInterface          $schema_gate          Per-site schema/migration gate.
+	 * Configure one request/site composition root.
+	 *
+	 * @param ServiceContainer        $container            Request/site service graph.
+	 * @param GateResult              $dependency_status    Packaged dependency result.
+	 * @param GateInterface           $compatibility_gate   Runtime compatibility gate.
+	 * @param GateInterface           $schema_gate          Per-site schema/migration gate.
 	 * @param DiagnosticSinkInterface $diagnostics          Safe failure reporter.
-	 * @param string[]               $hook_registrar_ids   Product hook registrar service IDs.
+	 * @param array<array-key, mixed> $hook_registrar_ids   Product hook registrar service IDs to validate.
+	 * @throws InvalidArgumentException When registrar IDs are empty, invalid, or duplicated.
 	 */
 	public function __construct(
 		ServiceContainer $container,
@@ -105,11 +145,11 @@ final class Plugin {
 			$site_id = 1;
 		}
 
-		$container           = new ServiceContainer( $site_id );
-		$diagnostics         = new WordPressDiagnosticSink();
-		$compatibility_gate  = CompatibilityGate::from_runtime();
-		$schema_gate         = new PendingSchemaGate();
-		$dependency_status   = DependencyLoader::load( WPFV_PLUGIN_DIR );
+		$container          = new ServiceContainer( $site_id );
+		$diagnostics        = new WordPressDiagnosticSink();
+		$compatibility_gate = CompatibilityGate::from_runtime();
+		$schema_gate        = new PendingSchemaGate();
+		$dependency_status  = DependencyLoader::load( WPFV_PLUGIN_DIR );
 
 		$container->set( DiagnosticSinkInterface::class, $diagnostics );
 		$container->set( 'wpfv.core.site_id', $site_id );
@@ -248,6 +288,7 @@ final class Plugin {
 			$this->diagnostics->report( $result );
 		} catch ( Throwable ) {
 			// Diagnostics must never turn a controlled bootstrap stop into a fatal.
+			return;
 		}
 	}
 }

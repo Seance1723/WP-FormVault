@@ -40,10 +40,10 @@ function plugin_dir_url( string $file ): string {
 /**
  * Minimal WordPress action-registration stub.
  *
- * @param string   $hook_name     Hook name.
- * @param mixed    $callback      Hook callback; WordPress accepts deferred callables.
- * @param int      $priority      Hook priority.
- * @param int      $accepted_args Accepted arguments.
+ * @param string $hook_name     Hook name.
+ * @param mixed  $callback      Hook callback; WordPress accepts deferred callables.
+ * @param int    $priority      Hook priority.
+ * @param int    $accepted_args Accepted arguments.
  */
 function add_action(
 	string $hook_name,
@@ -149,7 +149,10 @@ if ( ! class_exists( 'WPFormVault\\Autoloader', false ) ) {
 
 $matching_loaders = 0;
 
-foreach ( spl_autoload_functions() ?: array() as $loader ) {
+$autoload_functions = spl_autoload_functions();
+$autoload_functions = false !== $autoload_functions ? $autoload_functions : array();
+
+foreach ( $autoload_functions as $loader ) {
 	if (
 		is_array( $loader )
 		&& 'WPFormVault\\Autoloader' === $loader[0]

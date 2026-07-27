@@ -24,15 +24,28 @@
         "woocommerce/action-scheduler": "~3.9.3"
     },
     "require-dev": {
-        "brianhenryie/strauss": "0.28.1"
+        "brianhenryie/strauss": "0.28.1",
+        "php-stubs/wordpress-stubs": "6.5.7",
+        "phpstan/phpstan": "~2.2.6",
+        "phpunit/phpunit": "~9.6.35",
+        "squizlabs/php_codesniffer": "~3.13.5",
+        "wp-coding-standards/wpcs": "~3.4.1",
+        "yoast/phpunit-polyfills": "~3.1.2"
     },
     "autoload": {
         "psr-4": {
             "WPFormVault\\": "includes/"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "WPFormVault\\Tests\\": "tests/"
+        }
+    },
     "config": {
-        "allow-plugins": {},
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true
+        },
         "optimize-autoloader": true,
         "platform": {
             "php": "8.1.0"
@@ -56,11 +69,32 @@
             "@verify-dependencies"
         ],
         "generate-dependency-notices": "@php tools/generate-dependency-notices.php",
+        "analyse": "phpstan analyse --configuration=phpstan.neon.dist --no-progress --memory-limit=1G",
+        "lint": [
+            "@lint:phpcs",
+            "@lint:phpcompatibility"
+        ],
+        "lint:phpcompatibility": "tools/phpcompatibility/vendor/bin/phpcs --standard=phpcompatibility.xml.dist",
+        "lint:phpcs": "phpcs --standard=phpcs.xml.dist",
         "lint-generated-dependencies": "@php tools/lint-generated-dependencies.php",
         "patch-prefixed-dependencies": "@php tools/patch-prefixed-dependencies.php",
         "prefix-dependencies": "strauss",
+        "qa": [
+            "@qa:install-phpcompatibility",
+            "@verify-quality-tooling",
+            "@lint",
+            "@analyse",
+            "@test:unit"
+        ],
+        "qa:install-phpcompatibility": "composer install --working-dir=tools/phpcompatibility --no-interaction --no-progress --prefer-dist",
         "stage-action-scheduler": "@php tools/stage-action-scheduler.php",
-        "verify-dependencies": "@php tools/verify-dependencies.php"
+        "test:unit": "phpunit --configuration=phpunit.xml.dist --testsuite=unit",
+        "test:integration": "phpunit --configuration=phpunit.integration.xml.dist --testsuite=integration",
+        "test:functional": "phpunit --configuration=phpunit.integration.xml.dist --testsuite=functional",
+        "test:security": "phpunit --configuration=phpunit.integration.xml.dist --testsuite=security",
+        "test:performance": "phpunit --configuration=phpunit.integration.xml.dist --testsuite=performance",
+        "verify-dependencies": "@php tools/verify-dependencies.php",
+        "verify-quality-tooling": "@php tools/verify-qa-tooling.php"
     },
     "extra": {
         "strauss": {

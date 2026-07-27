@@ -1,0 +1,205 @@
+name: Required quality and integration
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  WPFV_TEST_DB_HOST: 127.0.0.1
+  WPFV_TEST_DB_NAME: wordpress_test
+  WPFV_TEST_DB_USER: root
+  WPFV_TEST_DB_PASSWORD: ""
+
+jobs:
+  quality-minimum:
+    name: quality-minimum
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-php-composer
+        with:
+          php-version: "8.1"
+          install-phpcompatibility: "true"
+      - name: Validate locked dependency graph
+        run: |
+          composer validate --strict
+          composer audit --locked
+          composer show --locked --direct
+          composer --working-dir=tools/phpcompatibility audit --locked
+          composer --working-dir=tools/phpcompatibility show --locked --direct
+      - name: Lint first-party PHP syntax
+        run: >
+          find wp-formvault.php includes tools tests -type f -name '*.php'
+          ! -path '*/vendor/*'
+          ! -path '*/vendor-prefixed/*'
+          ! -path '*/libraries/*'
+          -print0 | xargs -0 -n1 php -l
+      - name: Run coding and compatibility standards
+        run: composer run lint
+      - name: Run PHPStan level 8
+        run: composer run analyse
+      - name: Run unit tests
+        run: composer run test:unit
+
+  quality-latest:
+    name: quality-latest
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-php-composer
+        with:
+          php-version: latest
+      - name: Lint first-party PHP syntax
+        run: >
+          find wp-formvault.php includes tools tests -type f -name '*.php'
+          ! -path '*/vendor/*'
+          ! -path '*/vendor-prefixed/*'
+          ! -path '*/libraries/*'
+          -print0 | xargs -0 -n1 php -l
+      - name: Run unit tests
+        run: composer run test:unit
+
+  integration-minimum-mysql:
+    name: integration-minimum-mysql
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      database:
+        image: mysql:5.7
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MYSQL_DATABASE: wordpress_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --host=127.0.0.1 --user=root --silent"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-php-composer
+        with:
+          php-version: "8.1"
+      - name: Build isolated production dependencies
+        run: composer run build-dependencies
+      - name: Run WordPress 6.5 integration and security suites
+        run: bash tools/run-wordpress-integration-tests.sh 6.5.0 required-minimum-mysql
+
+  integration-minimum-mariadb:
+    name: integration-minimum-mariadb
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      database:
+        image: mariadb:10.4
+        env:
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: "1"
+          MARIADB_DATABASE: wordpress_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --host=127.0.0.1 --user=root --silent"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-php-composer
+        with:
+          php-version: "8.1"
+      - name: Build isolated production dependencies
+        run: composer run build-dependencies
+      - name: Run WordPress 6.5 integration suite
+        run: bash tools/run-wordpress-integration-tests.sh 6.5.0 integration
+
+  integration-current-php-band:
+    name: integration-current-php-band (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        php:
+          - "8.2"
+          - "8.3"
+          - "8.4"
+          - "8.5"
+    services:
+      database:
+        image: mysql:latest
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MYSQL_DATABASE: wordpress_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --host=127.0.0.1 --user=root --silent"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-php-composer
+        with:
+          php-version: ${{ matrix.php }}
+      - name: Build isolated production dependencies
+        run: composer run build-dependencies
+      - name: Run current integration, functional, and security suites
+        run: bash tools/run-wordpress-integration-tests.sh latest-stable required-current
+
+  integration-current-mariadb-multisite:
+    name: integration-current-mariadb-multisite
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      database:
+        image: mariadb:latest
+        env:
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: "1"
+          MARIADB_DATABASE: wordpress_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mariadb-admin ping --host=127.0.0.1 --user=root --silent"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-php-composer
+        with:
+          php-version: latest
+      - name: Build isolated production dependencies
+        run: composer run build-dependencies
+      - name: Run current multisite integration and lifecycle harness
+        env:
+          WPFV_TEST_MULTISITE: "1"
+        run: bash tools/run-wordpress-integration-tests.sh latest-stable required-multisite
+
+  dependency-build-minimum:
+    name: dependency-build-minimum
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-php-composer
+        with:
+          php-version: "8.1"
+      - name: Build and verify locked production dependencies
+        run: |
+          composer validate --strict
+          composer audit --locked --no-dev
+          composer run build-dependencies
+          composer install --no-dev --no-interaction --no-progress --prefer-dist --optimize-autoloader
+          composer run verify-dependencies

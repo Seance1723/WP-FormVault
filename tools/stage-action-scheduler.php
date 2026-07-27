@@ -7,7 +7,7 @@
 
 declare(strict_types=1);
 
-$root           = dirname( __DIR__ );
+$root            = dirname( __DIR__ );
 $vendor_autoload = $root . '/vendor/autoload.php';
 
 if ( ! is_file( $vendor_autoload ) ) {
@@ -23,7 +23,7 @@ $source  = Composer\InstalledVersions::getInstallPath( $package );
 $target  = $root . '/libraries/action-scheduler';
 
 if ( '3.9.3' !== $version ) {
-	fwrite( STDERR, "Expected Action Scheduler 3.9.3; found " . ( $version ?? 'unknown' ) . ".\n" );
+	fwrite( STDERR, 'Expected Action Scheduler 3.9.3; found ' . ( $version ?? 'unknown' ) . ".\n" );
 	exit( 1 );
 }
 

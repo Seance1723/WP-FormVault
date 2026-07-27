@@ -322,7 +322,7 @@ foreach ( $php_iterator as $php_file ) {
 	}
 }
 
-echo sprintf(
+printf(
 	"WP FormVault architecture verification passed: %d modules, %d dependency edges, %d PHP files checked, acyclic inward layers and public boundaries valid.\n",
 	count( $modules ),
 	$edge_count,

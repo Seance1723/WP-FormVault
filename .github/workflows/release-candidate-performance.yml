@@ -1,0 +1,44 @@
+name: Release-candidate performance
+
+on:
+  workflow_dispatch:
+  release:
+    types:
+      - prereleased
+
+permissions:
+  contents: read
+
+env:
+  WPFV_TEST_DB_HOST: 127.0.0.1
+  WPFV_TEST_DB_NAME: wordpress_test
+  WPFV_TEST_DB_USER: root
+  WPFV_TEST_DB_PASSWORD: ""
+
+jobs:
+  performance-release-candidate:
+    name: performance-release-candidate
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      database:
+        image: mysql:latest
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MYSQL_DATABASE: wordpress_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --host=127.0.0.1 --user=root --silent"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-php-composer
+        with:
+          php-version: latest
+      - name: Build isolated production dependencies
+        run: composer run build-dependencies
+      - name: Run the release-candidate performance suite
+        run: bash tools/run-wordpress-integration-tests.sh latest-stable performance

@@ -17,13 +17,30 @@ defined( 'ABSPATH' ) || exit;
  */
 final class CompatibilityGate implements GateInterface {
 
+	/**
+	 * WordPress version under evaluation.
+	 *
+	 * @var string
+	 */
 	private string $wordpress_version;
 
+	/**
+	 * PHP version under evaluation.
+	 *
+	 * @var string
+	 */
 	private string $php_version;
 
+	/**
+	 * PHP integer size in bytes.
+	 *
+	 * @var int
+	 */
 	private int $php_integer_size;
 
 	/**
+	 * Store the runtime values to evaluate.
+	 *
 	 * @param string $wordpress_version Current WordPress version.
 	 * @param string $php_version       Current PHP version.
 	 * @param int    $php_integer_size  PHP integer size in bytes.
@@ -38,9 +55,7 @@ final class CompatibilityGate implements GateInterface {
 	 * Build the gate from the current WordPress/PHP runtime.
 	 */
 	public static function from_runtime(): self {
-		$wordpress_version = isset( $GLOBALS['wp_version'] ) && is_string( $GLOBALS['wp_version'] )
-			? $GLOBALS['wp_version']
-			: '0';
+		$wordpress_version = $GLOBALS['wp_version'] ?? '0';
 
 		return new self( $wordpress_version, PHP_VERSION, PHP_INT_SIZE );
 	}

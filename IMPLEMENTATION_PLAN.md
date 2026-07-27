@@ -1011,10 +1011,11 @@ Fresh install; **upgrade/migration** across schema versions; **uninstall with an
 
 ### 35.7 Engineering quality and CI contract **[NEW]**
 
-The authoritative engineering-quality contract is `docs/architecture/quality-policy.json`; the rationale and operating rules are in `docs/architecture/engineering-quality-and-ci-policy.md`. Policy definition is owned by `ARCH-005`; installation of PHPUnit, PHPCS/WPCS, PHPCompatibilityWP, PHPStan, the WordPress test harness, and hosted CI workflows remains `QA-001`.
+The authoritative engineering-quality contract is `docs/architecture/quality-policy.json`; the rationale and operating rules are in `docs/architecture/engineering-quality-and-ci-policy.md`. Policy definition is owned by `ARCH-005`; PHPUnit, PHPCS/WPCS, PHPCompatibilityWP, PHPStan, the WordPress test harness, and hosted CI workflow definitions were implemented under `QA-001`. Passing workflow files are not release evidence until immutable hosted runs exist.
 
 - First-party PHP must pass `WordPress-Core`, `WordPress-Docs`, `WordPress-Extra`, and `PHPCompatibilityWP` with `testVersion` `8.1-`.
 - Runtime PHP starts at PHPStan level 8 with WordPress and Action Scheduler stubs, unmatched ignores reported, and no generated baseline.
+- PHPUnit 9.6 is the common runner because the official WordPress 6.5–7.0 core test-suite matrix assigns that major across the supported PHP lanes; PHPUnit Polyfills bridge the WordPress harness APIs.
 - Tests are separated into Unit, Integration, Functional, Security, Performance, Support, and synthetic/redacted Fixtures. Unit tests do not bootstrap WordPress; integration tests use dedicated ephemeral databases.
 - Blocking pull-request coverage includes quality checks on minimum and latest supported PHP, exact minimum WordPress/PHP lanes on both MySQL and MariaDB, the full currently supported PHP band on latest stable WordPress, a current multisite lane, and the locked dependency build.
 - WordPress trunk runs nightly as forward-compatibility evidence. A failure must be recorded or linked in `BUGS.md` before release even though the lane is informational.

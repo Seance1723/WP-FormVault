@@ -38,10 +38,10 @@ function plugin_dir_url( string $file ): string {
 /**
  * WordPress action-registration stub.
  *
- * @param string   $hook_name     Hook name.
- * @param mixed    $callback      Hook callback; WordPress accepts deferred callables.
- * @param int      $priority      Priority.
- * @param int      $accepted_args Accepted arguments.
+ * @param string $hook_name     Hook name.
+ * @param mixed  $callback      Hook callback; WordPress accepts deferred callables.
+ * @param int    $priority      Priority.
+ * @param int    $accepted_args Accepted arguments.
  */
 function add_action(
 	string $hook_name,
@@ -156,21 +156,47 @@ final class WPFVTestService implements WPFVTestServiceContract {
  */
 final class WPFVTestGate implements GateInterface {
 
+	/**
+	 * Number of evaluations.
+	 *
+	 * @var int
+	 */
 	public int $calls = 0;
 
+	/**
+	 * Result returned by the gate.
+	 *
+	 * @var GateResult
+	 */
 	private GateResult $result;
 
-	private bool $throw;
+	/**
+	 * Whether evaluation should throw.
+	 *
+	 * @var bool
+	 */
+	private bool $should_throw;
 
-	public function __construct( GateResult $result, bool $throw = false ) {
-		$this->result = $result;
-		$this->throw  = $throw;
+	/**
+	 * Configure a deterministic gate.
+	 *
+	 * @param GateResult $result       Result returned by the gate.
+	 * @param bool       $should_throw Whether evaluation should throw.
+	 */
+	public function __construct( GateResult $result, bool $should_throw = false ) {
+		$this->result       = $result;
+		$this->should_throw = $should_throw;
 	}
 
+	/**
+	 * Evaluate the deterministic gate.
+	 *
+	 * @throws RuntimeException When configured to simulate a gate failure.
+	 */
 	public function evaluate(): GateResult {
 		++$this->calls;
 
-		if ( $this->throw ) {
+		if ( $this->should_throw ) {
 			throw new RuntimeException( 'sensitive internal gate detail' );
 		}
 
@@ -184,10 +210,17 @@ final class WPFVTestGate implements GateInterface {
 final class WPFVTestDiagnosticSink implements DiagnosticSinkInterface {
 
 	/**
+	 * Reported gate results.
+	 *
 	 * @var GateResult[]
 	 */
 	public array $results = array();
 
+	/**
+	 * Record a reported result.
+	 *
+	 * @param GateResult $result Reported gate result.
+	 */
 	public function report( GateResult $result ): void {
 		$this->results[] = $result;
 	}
@@ -198,8 +231,16 @@ final class WPFVTestDiagnosticSink implements DiagnosticSinkInterface {
  */
 final class WPFVTestHookRegistrar implements HookRegistrarInterface {
 
+	/**
+	 * Number of hook registrations.
+	 *
+	 * @var int
+	 */
 	public int $registrations = 0;
 
+	/**
+	 * Record hook registration.
+	 */
 	public function register_hooks(): void {
 		++$this->registrations;
 	}
@@ -432,8 +473,8 @@ wpfv_bootstrap_assert(
 );
 wpfv_bootstrap_assert( array() === $ready_diagnostics->results, 'ready boot must not emit diagnostics' );
 
-$blocked_builds     = 0;
-$blocked_container  = new ServiceContainer( 7 );
+$blocked_builds    = 0;
+$blocked_container = new ServiceContainer( 7 );
 $blocked_container->share(
 	'wpfv.test.blocked_registrar',
 	static function () use ( &$blocked_builds ): HookRegistrarInterface {
@@ -528,7 +569,7 @@ wpfv_bootstrap_assert(
 );
 
 $throwing_gate = new WPFVTestGate( GateResult::pass(), true );
-$throw_plugin = new Plugin(
+$throw_plugin  = new Plugin(
 	new ServiceContainer( 7 ),
 	GateResult::pass(),
 	$throwing_gate,

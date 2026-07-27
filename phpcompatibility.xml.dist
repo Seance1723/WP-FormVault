@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<ruleset name="WP FormVault PHP compatibility">
+	<description>PHP 8.1 and newer compatibility checks for WP FormVault first-party PHP.</description>
+
+	<arg name="basepath" value="."/>
+	<arg name="colors"/>
+	<arg name="extensions" value="php"/>
+	<arg value="ps"/>
+
+	<file>wp-formvault.php</file>
+	<file>includes</file>
+	<file>tools</file>
+	<file>tests</file>
+
+	<exclude-pattern>*/vendor/*</exclude-pattern>
+	<exclude-pattern>*/vendor-prefixed/*</exclude-pattern>
+	<exclude-pattern>*/libraries/*</exclude-pattern>
+	<exclude-pattern>*/build/*</exclude-pattern>
+	<exclude-pattern>*/dist/*</exclude-pattern>
+	<exclude-pattern>tests/Support/Stubs/*.stub.php</exclude-pattern>
+
+	<config name="testVersion" value="8.1-"/>
+	<rule ref="PHPCompatibilityWP"/>
+</ruleset>

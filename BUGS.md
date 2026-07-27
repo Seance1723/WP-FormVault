@@ -45,6 +45,212 @@ This is the mandatory record for defects found during development, testing, depl
 
 Records are ordered by discovery recency. The `State` field is authoritative.
 
+### BUG-0017 — Automatic prose capitalization changed a machine-readable policy key
+
+- **State:** CLOSED
+- **Severity:** S3 Low
+- **First seen:** 2026-07-27 16:11:41 UTC
+- **Last seen:** 2026-07-27 16:16:08 UTC
+- **Environment:** local PHP 8.1 QA container, WPCS 3.4.1 / PHPCS 3.13.5
+- **Affected version/commit:** unreleased working tree
+- **Affected modules/tasks:** `ARCH-005`, `QA-001`
+- **Reporter/owner:** Codex
+
+#### Observed behavior
+
+After the quality-policy status moved to `policy_implemented`, `tools/verify-quality-policy.php` rejected every CI lane as incomplete even though every lane contained the required lowercase `wordpress` field.
+
+#### Expected behavior
+
+The verifier must read the exact case-sensitive field names defined by `quality-policy.json`, and automatic prose formatting must not alter machine-readable identifiers.
+
+#### Reproduction steps
+
+1. Set `docs/architecture/quality-policy.json` status to `policy_implemented`.
+2. Run `php tools/verify-quality-policy.php`.
+3. Observe `every CI lane needs identity, cadence, blocking state, platform, and site mode`.
+4. Compare the JSON field `wordpress` with the verifier lookup `WordPress`.
+
+#### Evidence
+
+- The working-tree diff showed `array_key_exists( 'wordpress', $lane )` had changed to `array_key_exists( 'WordPress', $lane )`.
+- The incorrect capitalization appeared after automatic PHPCBF cleanup under the WordPress prose-capitalization rule.
+- Frequency: every policy-verifier run with the affected lookup.
+
+#### Impact and scope
+
+The policy guard could not validate the implemented QA state and therefore blocked task completion. Plugin runtime and user data were not affected.
+
+#### Cause analysis
+
+- **Proximate cause:** A case-sensitive JSON key was treated as prose and capitalized.
+- **Root cause:** The WPCS prose-capitalization sniff was allowed to rewrite a machine-readable identifier inside a verifier.
+- **Contributing factors:** The string value spells the product name but semantically represents a fixed JSON field.
+- **Why existing controls missed it:** The policy verifier had not been rerun after the automatic formatting pass and lifecycle status transition.
+
+#### Resolution
+
+- **Fix:** Restore the lowercase `wordpress` lookup and exclude only `tools/verify-quality-policy.php` from the prose-capitalization sniff with a machine-key rationale.
+- **Data repair:** Not required.
+- **Backward compatibility:** No contract change; the verifier again matches the existing schema.
+
+#### Recurrence prevention
+
+- New invariant/guard: Formatters must not rewrite case-sensitive schema keys; automated formatting is followed by semantic verifier execution.
+- Regression test: run both `verify-quality-policy.php` and `verify-qa-tooling.php` after WPCS.
+- Broader related tests: rerun PHPCS and verify the lowercase lookup remains present.
+- Documentation/task/memory updates: capture the defect, guard, and verification in project records.
+- Monitoring/alert: the QA anti-drift verifier and policy verifier remain blocking quality checks.
+
+#### Verification
+
+- Command/check: `composer run lint:phpcs`; `php tools/verify-quality-policy.php`; `php tools/verify-qa-tooling.php`; complete `composer run qa`.
+- Result: WPCS passed 36 files; both semantic verifiers passed; the complete QA command exited 0.
+- Verified by/date: Codex, 2026-07-27 16:16:08 UTC.
+
+#### Timeline
+
+- `2026-07-27 16:11:41 UTC` — Implemented-state policy verification reproduced the case-sensitive lookup defect; correction started.
+- `2026-07-27 16:16:08 UTC` — Lowercase lookup, narrow sniff exclusion, dual verifiers, WPCS, and full QA gate passed; bug closed.
+
+### BUG-0016 — Initial WordPress integration smoke tests assumed an undefined constant and unauthenticated notice access
+
+- **State:** CLOSED
+- **Severity:** S3 Low
+- **First seen:** 2026-07-27 16:02:08 UTC
+- **Last seen:** 2026-07-27 16:16:08 UTC
+- **Environment:** WordPress 6.5, PHP 8.1.34, PHPUnit 9.6.35, MySQL 5.7.44, single-site isolated QA containers
+- **Affected version/commit:** unreleased working tree
+- **Affected modules/tasks:** `QA-001`
+- **Reporter/owner:** Codex
+
+#### Observed behavior
+
+The first real WordPress integration run reached PHPUnit but reported one error because `BootstrapTest` referenced undefined `WPFV_NAME`, and one failure because `DiagnosticEscapingTest` rendered an administrator-only notice without authenticating an administrator.
+
+#### Expected behavior
+
+Integration smoke tests must assert constants that the plugin actually declares and must establish the WordPress role/capability context required by the behavior under test.
+
+#### Reproduction steps
+
+1. Build the repository QA image from `docker/dependency-build/Dockerfile`.
+2. Start an isolated MySQL 5.7 database with a synthetic `wordpress_test` database.
+3. Run `bash tools/run-wordpress-integration-tests.sh 6.5.0 required-minimum-mysql` under PHP 8.1.
+4. Observe the undefined-constant error and the empty diagnostic output assertion failure.
+
+#### Evidence
+
+- Sanitized errors: `Undefined constant "WPFormVault\Tests\Integration\WPFV_NAME"` and `Failed asserting that '' contains "&lt;script&gt;"`.
+- Test result: 3 tests, 3 assertions, 1 error, 1 failure.
+- WordPress runtime resolved to 6.5; database reported 5.7.44.
+- Frequency: reproduced in the first real WordPress-backed execution.
+
+#### Impact and scope
+
+The QA lane failed and could not provide integration evidence. Plugin production behavior and user data were not affected; the diagnostic sink correctly withheld administrator output from an unauthenticated test request.
+
+#### Cause analysis
+
+- **Proximate cause:** Test fixtures asserted an undeclared constant and omitted the administrator current-user setup required by `current_user_can( 'activate_plugins' )`.
+- **Root cause:** The initial smoke tests were written before the real WordPress harness was executable, so assumptions were not yet checked against WordPress capability behavior.
+- **Contributing factors:** The pure unit suite cannot expose WordPress constant and current-user context mistakes.
+- **Why existing controls missed it:** No WordPress-backed test had run before the QA image gained `mysqli` and the ephemeral database runner was available.
+
+#### Resolution
+
+- **Fix:** Assert the declared `WPFV_TEXT_DOMAIN` identity and create/set an administrator user before rendering the protected notice.
+- **Data repair:** Not required.
+- **Backward compatibility:** Test-only correction; runtime behavior remains unchanged.
+
+#### Recurrence prevention
+
+- New invariant/guard: WordPress-backed tests must establish their required site mode, role, and capability context explicitly.
+- Regression test: rerun the exact WordPress 6.5/MySQL 5.7 `required-minimum-mysql` suite.
+- Broader related tests: execute WPCS, PHPCompatibilityWP, PHPStan, unit tests, and the multisite/current hosted lanes.
+- Documentation/task/memory updates: record the defect and final QA-001 evidence in the mandatory project records.
+- Monitoring/alert: any non-zero required hosted lane blocks release.
+
+#### Verification
+
+- Command/check: `bash tools/run-wordpress-integration-tests.sh 6.5.0 required-minimum-mysql` and the same WordPress 6.5 harness with `WPFV_TEST_MULTISITE=1` / `required-multisite`.
+- Result: single-site integration/security passed 3 tests and 5 assertions; multisite integration/functional passed 3 tests and 4 assertions on MySQL 5.7.44.
+- Verified by/date: Codex, 2026-07-27 16:16:08 UTC.
+
+#### Timeline
+
+- `2026-07-27 16:02:08 UTC` — Real WordPress minimum lane reproduced both test-fixture defects; fix started.
+- `2026-07-27 16:16:08 UTC` — Corrected single-site and multisite WordPress-backed suites passed; bug closed.
+
+### BUG-0015 — Quality policy selected a PHPUnit major unsupported by the WordPress core test suite
+
+- **State:** CLOSED
+- **Severity:** S2 Medium
+- **First seen:** 2026-07-27 15:23:26 UTC
+- **Last seen:** 2026-07-27 16:16:08 UTC
+- **Environment:** QA-001 dependency research / WordPress 6.5–7.0 compatibility range
+- **Affected version/commit:** unreleased working tree
+- **Affected modules/tasks:** `ARCH-005`, `QA-001`
+- **Reporter/owner:** Codex
+
+#### Observed behavior
+
+The accepted policy required PHPUnit 10 for all PHP lanes. The official WordPress core compatibility matrix states that the WordPress 6.5 through 7.0 test suites use PHPUnit 9 across the relevant PHP versions.
+
+#### Expected behavior
+
+The common PHPUnit runner must be supported by both PHP 8.1–8.5 and the official WordPress 6.5/current core test harness so minimum and rolling integration lanes execute the same test suites.
+
+#### Reproduction steps
+
+1. Read `docs/architecture/quality-policy.json`.
+2. Observe `phpunit_php_8_1_compatible_major` and `runner_major_for_all_php_lanes` set to 10.
+3. Compare the official WordPress “PHPUnit Compatibility and WordPress Versions” table for WordPress 6.5 through 7.0.
+4. Observe that the supported PHPUnit major is 9.
+
+#### Evidence
+
+- Sanitized log/error: not applicable; incompatibility was detected before package installation.
+- Test name/result: official WordPress compatibility-table review failed the policy assumption.
+- Screenshot/artifact: [WordPress PHPUnit compatibility handbook](https://make.wordpress.org/core/handbook/references/phpunit-compatibility-and-wordpress-versions/).
+- Frequency: deterministic for the selected WordPress range.
+
+#### Impact and scope
+
+Leaving the policy unchanged would prevent the official minimum/current WordPress integration harness from running as specified or force an unsupported PHPUnit configuration. No production runtime or user data is affected.
+
+#### Cause analysis
+
+- **Proximate cause:** The policy selected PHPUnit solely from its PHP 8.1 requirement.
+- **Root cause:** Generic test-runner/PHP compatibility was treated as sufficient without cross-checking the WordPress core test-suite matrix.
+- **Contributing factors:** PHPUnit 10 itself supports PHP 8.1+, which made the selection appear valid until the WordPress harness was considered.
+- **Why existing controls missed it:** `ARCH-005` verified policy consistency but did not validate the runner major against WordPress core’s official matrix.
+
+#### Resolution
+
+- **Fix:** Change the common runner to the latest compatible PHPUnit 9.6 line, update the machine/human policy and verifier, then install and exercise it through `QA-001`.
+- **Data repair:** Not required.
+- **Backward compatibility:** No runtime impact; this is a pre-release development-tool correction.
+
+#### Recurrence prevention
+
+- New invariant/guard: test-runner selection must satisfy the official WordPress/PHPUnit matrix as well as generic PHP requirements.
+- Regression test: quality-policy verifier asserts PHPUnit major 9 and the engineering policy cites the WordPress matrix.
+- Broader related tests: minimum/current WordPress integration smoke tests across the CI matrix.
+- Documentation/task/memory updates: policy, plan, tasks, changelog, and memory.
+- Monitoring/alert: dependency updates recheck both upstream matrices before changing the runner.
+
+#### Verification
+
+- Command/check: quality-policy verifier, locked PHPUnit 9.6.35 unit suite, WordPress 6.5 single-site and multisite harnesses, and complete `composer run qa`.
+- Result: policy verified; PHPUnit 9.6.35 passed pure unit and official WordPress 6.5-backed tests; full QA command exited 0.
+- Verified by/date: Codex, 2026-07-27 16:16:08 UTC.
+
+#### Timeline
+
+- `2026-07-27 15:23:26 UTC` — QA-001 research identified the incompatible PHPUnit-major assumption and reopened ARCH-005.
+- `2026-07-27 16:16:08 UTC` — Corrected policy, locked runner, WordPress harness, and complete QA gate passed; bug closed.
+
 ### BUG-0014 — Quality snapshot changed a frozen compatibility-memory contract
 
 - **State:** CLOSED

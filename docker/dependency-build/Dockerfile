@@ -8,6 +8,7 @@ ENV COMPOSER_ALLOW_SUPERUSER=1 \
 RUN apt-get update \
     && apt-get install --no-install-recommends --yes \
         ca-certificates \
+        curl \
         git \
         libfreetype6-dev \
         libjpeg62-turbo-dev \
@@ -16,7 +17,7 @@ RUN apt-get update \
         libzip-dev \
         unzip \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j"$(nproc)" gd mbstring zip \
+    && docker-php-ext-install -j"$(nproc)" gd mbstring mysqli zip \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=composer /usr/bin/composer /usr/local/bin/composer

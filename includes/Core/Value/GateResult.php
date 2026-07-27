@@ -16,13 +16,30 @@ defined( 'ABSPATH' ) || exit;
  */
 final class GateResult {
 
+	/**
+	 * Whether the evaluated gate passed.
+	 *
+	 * @var bool
+	 */
 	private bool $passed;
 
+	/**
+	 * Stable machine-readable result code.
+	 *
+	 * @var string
+	 */
 	private string $code;
 
+	/**
+	 * Sanitized administrator-facing message.
+	 *
+	 * @var string
+	 */
 	private string $message;
 
 	/**
+	 * Store an immutable gate result.
+	 *
 	 * @param bool   $passed  Whether the gate passed.
 	 * @param string $code    Stable machine-readable result code.
 	 * @param string $message Sanitized administrator-facing message.
@@ -45,6 +62,7 @@ final class GateResult {
 	 *
 	 * @param string $code    Stable lowercase result code.
 	 * @param string $message Sanitized administrator-facing message.
+	 * @throws InvalidArgumentException When the code or message is unsafe.
 	 */
 	public static function failure( string $code, string $message ): self {
 		if ( 1 !== preg_match( '/^[a-z][a-z0-9_]*$/D', $code ) ) {

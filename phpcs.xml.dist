@@ -1,0 +1,104 @@
+<?xml version="1.0"?>
+<ruleset name="WP FormVault">
+	<description>WordPress coding standards for WP FormVault first-party PHP.</description>
+
+	<arg name="basepath" value="."/>
+	<arg name="colors"/>
+	<arg name="extensions" value="php"/>
+	<arg value="ps"/>
+
+	<file>wp-formvault.php</file>
+	<file>includes</file>
+	<file>tools</file>
+	<file>tests</file>
+
+	<exclude-pattern>*/vendor/*</exclude-pattern>
+	<exclude-pattern>*/vendor-prefixed/*</exclude-pattern>
+	<exclude-pattern>*/libraries/*</exclude-pattern>
+	<exclude-pattern>*/build/*</exclude-pattern>
+	<exclude-pattern>*/dist/*</exclude-pattern>
+	<exclude-pattern>tests/Support/Stubs/*.stub.php</exclude-pattern>
+
+	<config name="minimum_supported_wp_version" value="6.5"/>
+
+	<rule ref="WordPress-Core"/>
+	<rule ref="WordPress-Docs"/>
+	<rule ref="WordPress-Extra"/>
+
+	<!-- ARCH-004 requires namespace-to-path PSR-4 class files. -->
+	<rule ref="WordPress.Files.FileName.NotHyphenatedLowercase">
+		<exclude-pattern>includes/*</exclude-pattern>
+		<exclude-pattern>tests/*</exclude-pattern>
+	</rule>
+	<rule ref="WordPress.Files.FileName.InvalidClassFileName">
+		<exclude-pattern>includes/*</exclude-pattern>
+		<exclude-pattern>tests/*</exclude-pattern>
+		<exclude-pattern>tools/verify-bootstrap.php</exclude-pattern>
+		<exclude-pattern>tools/fixtures/dependency-conflict-stubs.php</exclude-pattern>
+	</rule>
+
+	<!-- Standalone verifier and conflict fixture deliberately combine test-only symbols. -->
+	<rule ref="Universal.Files.SeparateFunctionsFromOO.Mixed">
+		<exclude-pattern>tools/verify-bootstrap.php</exclude-pattern>
+	</rule>
+	<rule ref="Generic.Files.OneObjectStructurePerFile.MultipleFound">
+		<exclude-pattern>tools/verify-bootstrap.php</exclude-pattern>
+		<exclude-pattern>tools/fixtures/dependency-conflict-stubs.php</exclude-pattern>
+	</rule>
+	<rule ref="Universal.Namespaces.OneDeclarationPerFile.MultipleFound">
+		<exclude-pattern>tools/fixtures/dependency-conflict-stubs.php</exclude-pattern>
+	</rule>
+
+	<!-- CLI tools and isolated test bootstraps deliberately run before WordPress exists. -->
+	<rule ref="WordPress.WP.AlternativeFunctions">
+		<exclude-pattern>tools/*</exclude-pattern>
+		<exclude-pattern>tests/*</exclude-pattern>
+	</rule>
+	<rule ref="WordPress.WP.GlobalVariablesOverride.Prohibited">
+		<exclude-pattern>tools/*</exclude-pattern>
+		<exclude-pattern>tests/*</exclude-pattern>
+	</rule>
+	<rule ref="WordPress.Security.EscapeOutput.OutputNotEscaped">
+		<exclude-pattern>tools/*</exclude-pattern>
+		<exclude-pattern>tests/*</exclude-pattern>
+	</rule>
+	<rule ref="WordPress.DB.RestrictedClasses">
+		<exclude-pattern>tests/Support/Integration/wait-for-database.php</exclude-pattern>
+	</rule>
+	<rule ref="WordPress.DB.RestrictedFunctions">
+		<exclude-pattern>tests/Support/Integration/wait-for-database.php</exclude-pattern>
+	</rule>
+
+	<!-- The isolated dependency linter owns its child process and closes every pipe. -->
+	<rule ref="WordPress.PHP.DiscouragedPHPFunctions.system_calls_proc_open">
+		<exclude-pattern>tools/lint-generated-dependencies.php</exclude-pattern>
+	</rule>
+
+	<!-- Verifier-only diagnostics serialize already non-sensitive policy values. -->
+	<rule ref="WordPress.PHP.DevelopmentFunctions.error_log_var_export">
+		<exclude-pattern>tools/verify-architecture.php</exclude-pattern>
+	</rule>
+
+	<!-- This verifier reads the lowercase machine key "wordpress" from JSON. -->
+	<rule ref="WordPress.WP.CapitalPDangit">
+		<exclude-pattern>tools/verify-quality-policy.php</exclude-pattern>
+	</rule>
+
+	<!-- Container exceptions are internal control flow and are never rendered. -->
+	<rule ref="WordPress.Security.EscapeOutput.ExceptionNotEscaped">
+		<exclude-pattern>includes/Core/ServiceContainer.php</exclude-pattern>
+	</rule>
+
+	<!-- Plugin::start catches registrar exceptions and converts them to a blocked state. -->
+	<rule ref="Squiz.Commenting.FunctionCommentThrowTag.Missing">
+		<exclude-pattern>includes/Core/Plugin.php</exclude-pattern>
+	</rule>
+
+	<rule ref="WordPress.WP.I18n">
+		<properties>
+			<property name="text_domain" type="array">
+				<element value="wp-formvault"/>
+			</property>
+		</properties>
+	</rule>
+</ruleset>

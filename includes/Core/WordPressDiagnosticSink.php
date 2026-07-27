@@ -18,10 +18,17 @@ defined( 'ABSPATH' ) || exit;
 final class WordPressDiagnosticSink implements DiagnosticSinkInterface {
 
 	/**
+	 * Failures keyed by stable result code.
+	 *
 	 * @var array<string, GateResult>
 	 */
 	private array $failures = array();
 
+	/**
+	 * Whether the administrator notice hook is registered.
+	 *
+	 * @var bool
+	 */
 	private bool $hook_registered = false;
 
 	/**
@@ -56,6 +63,7 @@ final class WordPressDiagnosticSink implements DiagnosticSinkInterface {
 				? esc_html( $message )
 				: htmlspecialchars( $message, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
 
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- $safe is escaped immediately above.
 			echo '<div class="notice notice-error"><p>' . $safe . '</p></div>';
 		}
 	}

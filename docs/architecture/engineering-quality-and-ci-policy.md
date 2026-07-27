@@ -3,13 +3,13 @@
 Last reviewed: 2026-07-27  
 Owning task: `ARCH-005`  
 Implementation task: `QA-001`  
-Status: Policy accepted; tool installation, test bootstraps, and hosted CI workflows are not yet implemented
+Status: Policy and QA-001 tooling implemented; immutable hosted-run evidence is required before release
 
 ## Purpose and truth boundary
 
 This policy freezes the coding standard, static-analysis strictness, test taxonomy, and CI coverage required for WP FormVault. The machine-readable contract is [`quality-policy.json`](./quality-policy.json).
 
-Policy acceptance is not evidence that PHPUnit, PHPCS, PHPStan, a WordPress integration harness, or hosted CI exists. `QA-001` owns those installations and configurations. A future release cannot treat a required lane as passed when that lane is missing, skipped, or unable to resolve its environment.
+`QA-001` installed the locked analyzers and test runner, the isolated WordPress database harness, and GitHub Actions jobs for all nine required lane IDs. Configuration in the repository is not evidence that a hosted run passed: release evidence must link immutable successful runs for every blocking lane. A future release cannot treat a required lane as passed when that lane is missing, skipped, cancelled, or unable to resolve its environment.
 
 ## Dated upstream reference snapshot
 
@@ -19,7 +19,7 @@ These facts were checked against primary upstream sources on 2026-07-27. They ex
 |---|---|---|
 | WordPress stable | WordPress `7.0.2` is the latest stable release. | Current lanes resolve `latest-stable` at run time and log the exact version. |
 | PHP support | PHP `8.2`–`8.5` are supported upstream; PHP `8.1` is end-of-life. | WP FormVault retains PHP 8.1 because it is the user-selected product minimum, marks it as legacy coverage, and also tests every currently supported PHP minor. |
-| PHPUnit/PHP compatibility | PHPUnit 10 requires PHP 8.1+; newer PHPUnit majors require newer PHP minimums. | `QA-001` must select a maintained PHPUnit 10 minor that can execute the same suite across the advertised PHP band. |
+| WordPress/PHPUnit compatibility | The official WordPress matrix assigns PHPUnit 9 to WordPress 6.5 through 7.0 across the relevant PHP lanes. PHPUnit 9.6 remains in life support and receives compatibility changes for newer PHP versions. | `QA-001` must use the latest compatible PHPUnit 9.6 patch as the common runner and install PHPUnit Polyfills for the WordPress core harness. |
 | WordPress Coding Standards | WordPressCS provides `WordPress-Core`, `WordPress-Docs`, and `WordPress-Extra`, and recommends PHPCompatibilityWP for plugin compatibility checks. | All four rulesets are mandatory for first-party PHP. |
 | PHPStan rule levels | PHPStan levels are cumulative; level 8 adds nullable method/property safety. | First-party runtime code starts at level 8, with no generated baseline. |
 
@@ -28,6 +28,7 @@ Primary references:
 - [WordPress release archive](https://wordpress.org/download/releases/)
 - [PHP supported versions](https://www.php.net/supported-versions.php)
 - [Supported versions of PHPUnit](https://phpunit.de/supported-versions.html)
+- [WordPress PHPUnit compatibility matrix](https://make.wordpress.org/core/handbook/references/phpunit-compatibility-and-wordpress-versions/)
 - [WordPress Coding Standards](https://github.com/WordPress/WordPress-Coding-Standards)
 - [PHPStan rule levels](https://phpstan.org/user-guide/rule-levels)
 - [WordPress PHPUnit testing handbook](https://make.wordpress.org/core/handbook/testing/automated-testing/phpunit/)
@@ -83,6 +84,7 @@ tests/
 
 Rules:
 
+- PHPUnit 9.6 is the common runner for unit and WordPress-backed suites because it is the major supported by the official WordPress 6.5–7.0 test harness.
 - Unit tests must not load WordPress or connect to a database.
 - WordPress integration tests use a dedicated ephemeral database and leave no state for another test.
 - Network access is denied by default. A test that genuinely exercises an external boundary must use a local substitute or be explicitly isolated.

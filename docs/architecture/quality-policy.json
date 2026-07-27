@@ -2,7 +2,7 @@
   "schema_version": 1,
   "owning_task": "ARCH-005",
   "implementation_task": "QA-001",
-  "status": "policy_accepted_tooling_not_implemented",
+  "status": "policy_implemented",
   "researched_on": "2026-07-27",
   "reference_snapshot": {
     "wordpress_latest_stable": "7.0.2",
@@ -15,7 +15,8 @@
     "php_plugin_legacy_coverage": [
       "8.1"
     ],
-    "phpunit_php_8_1_compatible_major": 10
+    "phpunit_common_runner_major": 9,
+    "wordpress_phpunit_matrix_range": "6.5-7.0"
   },
   "platform_contract": {
     "wordpress_minimum": "6.5",
@@ -68,7 +69,7 @@
   },
   "test_policy": {
     "runner": "PHPUnit",
-    "runner_major_for_all_php_lanes": 10,
+    "runner_major_for_all_php_lanes": 9,
     "production_data_forbidden": true,
     "network_calls_default": "forbidden",
     "clock_and_randomness": "inject_or_freeze",

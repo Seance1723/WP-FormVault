@@ -138,8 +138,11 @@ if ( in_array( '8.1', $supported_php, true ) || ! in_array( '8.1', $legacy_php, 
 	wpfv_quality_policy_fail( 'PHP 8.1 must be identified as plugin legacy coverage, not current upstream support' );
 }
 
-if ( 10 !== ( $snapshot['phpunit_php_8_1_compatible_major'] ?? null ) ) {
-	wpfv_quality_policy_fail( 'PHPUnit major 10 must serve the PHP 8.1 compatibility floor' );
+if (
+	9 !== ( $snapshot['phpunit_common_runner_major'] ?? null )
+	|| '6.5-7.0' !== ( $snapshot['wordpress_phpunit_matrix_range'] ?? null )
+) {
+	wpfv_quality_policy_fail( 'PHPUnit major 9 must serve the official WordPress 6.5-7.0 test-harness range' );
 }
 
 $platform = $policy['platform_contract'] ?? null;
@@ -231,7 +234,7 @@ $test_policy = $policy['test_policy'] ?? null;
 if (
 	! is_array( $test_policy )
 	|| 'PHPUnit' !== ( $test_policy['runner'] ?? null )
-	|| 10 !== ( $test_policy['runner_major_for_all_php_lanes'] ?? null )
+	|| 9 !== ( $test_policy['runner_major_for_all_php_lanes'] ?? null )
 	|| true !== ( $test_policy['production_data_forbidden'] ?? null )
 	|| 'forbidden' !== ( $test_policy['network_calls_default'] ?? null )
 	|| 'dedicated_ephemeral_database' !== ( $test_policy['database_isolation'] ?? null )
@@ -328,15 +331,15 @@ foreach ( $required_lanes as $lane ) {
 }
 
 $expected_lanes = array(
-	'quality-minimum'                         => true,
-	'quality-latest'                          => true,
-	'integration-minimum-mysql'               => true,
-	'integration-minimum-mariadb'             => true,
-	'integration-current-php-band'            => true,
-	'integration-current-mariadb-multisite'   => true,
-	'dependency-build-minimum'                => true,
-	'wordpress-trunk-forward-compatibility'   => false,
-	'performance-release-candidate'           => true,
+	'quality-minimum'                       => true,
+	'quality-latest'                        => true,
+	'integration-minimum-mysql'             => true,
+	'integration-minimum-mariadb'           => true,
+	'integration-current-php-band'          => true,
+	'integration-current-mariadb-multisite' => true,
+	'dependency-build-minimum'              => true,
+	'wordpress-trunk-forward-compatibility' => false,
+	'performance-release-candidate'         => true,
 );
 
 foreach ( $expected_lanes as $lane_id => $blocking ) {
@@ -387,8 +390,9 @@ if (
 $document = wpfv_quality_policy_read( $doc_path );
 
 $required_document_contracts = array(
-	'Policy acceptance is not evidence that PHPUnit, PHPCS, PHPStan',
+	'`QA-001` installed the locked analyzers and test runner',
 	'PHPStan runs at **level 8**',
+	'PHPUnit 9.6 is the common runner',
 	'no generated PHPStan baseline',
 	'Fixtures must never contain secrets',
 	'A skipped, cancelled, unresolved, or missing blocking lane is a failure',
@@ -417,7 +421,7 @@ foreach ( $required_plan_contracts as $contract ) {
 	}
 }
 
-echo sprintf(
+printf(
 	"WP FormVault quality-policy verification passed: %d coding rulesets, PHPStan level %d, %d test areas, %d CI lanes (%d blocking), reference snapshot %s.\n",
 	count( $rulesets ),
 	$analysis['level'],

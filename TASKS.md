@@ -1,7 +1,7 @@
 # WP FormVault Task Register
 
 Last updated: 2026-07-27  
-Current stage: Engineering quality policy and CI matrix are complete (`ARCH-005`); quality-tool and hosted-CI implementation is next (`QA-001`).
+Current stage: Quality tooling and CI definitions are complete; database versioning/migration design is next (`DB-001`).
 
 ## Purpose
 
@@ -82,10 +82,10 @@ Never use “implemented as planned” as evidence.
 | ID | Submodule / task | State | Depends on | Notes / evidence |
 |---|---|---|---|---|
 | ARCH-001 | Freeze project identifiers: name, slug, namespace, text domain, prefixes | `COMPLETE` | GOV-002 | See `MEMORY.md` Project identity. |
-| ARCH-002 | Define supported WordPress/PHP/database compatibility matrix | `COMPLETE` | ARCH-001 | Option A selected by the user on 2026-07-27: WordPress 6.5+, Action Scheduler 3.9.3, PHP 8.1+ on 64-bit, MySQL 5.7+ or MariaDB 10.4+. Verified under PHP 8.1.34 with compatibility/foundation checks and an acyclic 198-task/325-edge graph. The verifier targets stable compatibility facts rather than mutable policy status. `ARCH-005` defines the full CI matrix; execution remains `QA-001`. (`BUG-0005`, `BUG-0011`) |
+| ARCH-002 | Define supported WordPress/PHP/database compatibility matrix | `COMPLETE` | ARCH-001 | Option A selected by the user on 2026-07-27: WordPress 6.5+, Action Scheduler 3.9.3, PHP 8.1+ on 64-bit, MySQL 5.7+ or MariaDB 10.4+. Verified under PHP 8.1.34 with compatibility/foundation checks and an acyclic 198-task/325-edge graph. The verifier targets stable compatibility facts rather than mutable policy status. `ARCH-005` defines the full CI matrix; executable lanes are implemented under `QA-001`. (`BUG-0005`, `BUG-0011`) |
 | ARCH-003 | Define Composer dependency versions and conflict policy | `COMPLETE` | FND-001 | Policy and first minimum-platform lock verified 2026-07-27. PhpSpreadsheet 5.8.1 is the last PHP 8.1 line; Action Scheduler 3.9.3 is the latest WordPress-6.5-compatible line; ZipStream remains 3.0.2. The lock-only build passed strict validation, audit, isolation, and runtime smoke tests. (`BUG-0006`, `BUG-0007`) |
 | ARCH-004 | Define service-container composition and module boundaries | `COMPLETE` | FND-001 | Accepted `Core\Plugin` composition root and `Core\ServiceContainer` contract, fail-closed startup sequence, explicit service scopes, 15-module/63-edge inward graph, public-surface rules, and ownership boundaries. Verified 2026-07-27 under PHP 8.1.34 with `php tools/verify-architecture.php`; all module directories/imports passed and the graph is acyclic by strict layer direction. |
-| ARCH-005 | Define coding standards, static-analysis level, test layout, and CI matrix | `COMPLETE` | FND-001 | Accepted human/machine policy defines 4 PHPCS rulesets, PHPStan level 8/no baseline, 7 test areas, and 9 CI lanes (8 blocking). Verified 2026-07-27 under the repository PHP 8.1.34 image: foundation, compatibility, architecture, bootstrap, quality-policy, dependency/isolation/XLSX/ZIP, JSON, diff, and 198-task/325-edge graph checks passed. Tool/workflow installation remains `QA-001`. (`BUG-0014`) |
+| ARCH-005 | Define coding standards, static-analysis level, test layout, and CI matrix | `COMPLETE` | FND-001 | Accepted policy defines 4 PHPCS rulesets, PHPStan level 8/no baseline, PHPUnit 9.6 for the official WordPress 6.5–7.0 harness, 7 test areas, and 9 CI lanes (8 blocking). The installed tool/workflow evidence is recorded under completed `QA-001`; hosted-run evidence remains a release requirement. (`BUG-0014`, `BUG-0015`) |
 | ARCH-006 | Record architecture decisions that alter the implementation plan | `ACTIVE` | GOV-007 | Add dated decisions to `MEMORY.md`; update the plan if requirements change. |
 
 ## FND — Plugin foundation and lifecycle
@@ -399,7 +399,7 @@ Never use “implemented as planned” as evidence.
 
 | ID | Submodule / task | State | Depends on | Notes / evidence |
 |---|---|---|---|---|
-| QA-001 | Establish PHPUnit, WordPress integration, static analysis, and coding-standard tooling | `READY` | ARCH-005, FND-002 | Implement `docs/architecture/quality-policy.json` without weakening it; commands, exact versions, test bootstrap, and hosted-CI provider/workflows must be documented and verified. |
+| QA-001 | Establish PHPUnit, WordPress integration, static analysis, and coding-standard tooling | `COMPLETE` | ARCH-005, FND-002 | Locked PHPUnit 9.6.35/Polyfills, WPCS 3.4.1 on PHPCS 3.13.5, isolated PHPCompatibilityWP 3.0.0-alpha2 on PHPCS 4.0.1, PHPStan 2.2.6/WordPress 6.5.7 stubs, isolated unit/WordPress bootstraps, and all 9 GitHub Actions lane IDs are implemented. `composer run qa`, strict Composer validation/full-lock audit, policy/tooling verifiers, actionlint 1.7.12, and WordPress 6.5 single-site plus multisite tests on PHP 8.1.34/MySQL 5.7.44 passed. Hosted workflow definitions are not immutable hosted-run evidence. (`BUG-0015`, `BUG-0016`, `BUG-0017`) |
 | QA-002 | Unit-test window math, hashes, sanitizer, token, retry, mapping, and filters | `PLANNED` | QA-001, relevant modules | Include DST and half-hour timezone cases. |
 | QA-003 | Integration-test adapters, queue, cron, mail, storage, webservers, and object cache | `PLANNED` | QA-001, relevant modules | Pin tested plugin versions. |
 | QA-004 | Functional-test schedules, exports, delivery, expiry, regeneration, workflow, and automation | `PLANNED` | QA-001, relevant modules | Verify AccessScope in every path. |
@@ -425,11 +425,10 @@ No confirmed implementation blocker remains. The following choices stay within t
 
 | Decision | Owning task | Current treatment |
 |---|---|---|
-| Hosted CI provider and workflow implementation | QA-001 | The required nine-lane database/platform matrix is accepted under `ARCH-005`; provider selection and executable workflows remain. |
 | Advanced CF7 DB product/version scope | CF7-006 | Evaluate before adapter work. |
 | Custom recurrence syntax and validation limits | SCHED-005 | Define before UI/API implementation. |
 | Default operational caps beyond the documented examples | Relevant module/settings tasks | Benchmark, document, then choose. |
 
 ## Next executable task
 
-`QA-001` is the recommended `READY` task: install and configure the accepted PHPUnit/WordPress integration, PHPCS/WPCS/PHPCompatibilityWP, PHPStan, and hosted-CI quality gates. `DB-001`, `SEC-001`, `ADAPTER-001`, `LOG-001`, `EMAIL-001`, and `HEALTH-001` are also dependency-ready but remain sequenced after the quality harness unless the user reprioritizes them.
+`DB-001` is the recommended `READY` task: define schema versioning and the per-site migration-state model before implementing the migration framework. `SEC-001`, `ADAPTER-001`, `LOG-001`, `EMAIL-001`, and `HEALTH-001` are also dependency-ready but remain sequenced after the database foundation unless the user reprioritizes them.

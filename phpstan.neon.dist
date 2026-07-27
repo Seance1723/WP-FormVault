@@ -1,0 +1,10 @@
+parameters:
+	level: 8
+	paths:
+		- wp-formvault.php
+		- includes
+	scanFiles:
+		- vendor/php-stubs/wordpress-stubs/wordpress-stubs.php
+		- tests/Support/Stubs/action-scheduler.stub.php
+	tmpDir: build/phpstan
+	reportUnmatchedIgnoredErrors: true

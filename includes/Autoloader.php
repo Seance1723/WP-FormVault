@@ -20,6 +20,11 @@ final class Autoloader {
 
 	private const NAMESPACE_PREFIX = 'WPFormVault\\';
 
+	/**
+	 * Whether this loader has already been registered for the request.
+	 *
+	 * @var bool
+	 */
 	private static bool $registered = false;
 
 	/**
@@ -37,16 +42,16 @@ final class Autoloader {
 	/**
 	 * Load a class inside the plugin namespace.
 	 *
-	 * @param string $class Fully qualified class name.
+	 * @param string $class_name Fully qualified class name.
 	 */
-	public static function autoload( string $class ): void {
+	public static function autoload( string $class_name ): void {
 		$prefix_length = strlen( self::NAMESPACE_PREFIX );
 
-		if ( 0 !== strncmp( $class, self::NAMESPACE_PREFIX, $prefix_length ) ) {
+		if ( 0 !== strncmp( $class_name, self::NAMESPACE_PREFIX, $prefix_length ) ) {
 			return;
 		}
 
-		$relative_class = substr( $class, $prefix_length );
+		$relative_class = substr( $class_name, $prefix_length );
 
 		if (
 			'' === $relative_class

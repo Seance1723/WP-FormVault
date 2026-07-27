@@ -18,32 +18,53 @@ defined( 'ABSPATH' ) || exit;
  */
 final class ServiceContainer {
 
+	/**
+	 * WordPress site/blog ID represented by this graph.
+	 *
+	 * @var int
+	 */
 	private int $site_id;
 
 	/**
+	 * Registered values and service factories.
+	 *
 	 * @var array<string, array{kind:string, value:mixed, shared:bool}>
 	 */
 	private array $definitions = array();
 
 	/**
+	 * Public contract aliases mapped to service identifiers.
+	 *
 	 * @var array<string, string>
 	 */
 	private array $aliases = array();
 
 	/**
+	 * Cached shared service values.
+	 *
 	 * @var array<string, mixed>
 	 */
 	private array $resolved = array();
 
 	/**
+	 * Service identifiers currently being resolved.
+	 *
 	 * @var array<string, true>
 	 */
 	private array $resolving = array();
 
+	/**
+	 * Whether definition registration has ended.
+	 *
+	 * @var bool
+	 */
 	private bool $frozen = false;
 
 	/**
+	 * Create an isolated service graph for one site.
+	 *
 	 * @param int $site_id Current WordPress site/blog ID.
+	 * @throws ContainerException When the site ID is not positive.
 	 */
 	public function __construct( int $site_id ) {
 		if ( $site_id < 1 ) {
@@ -102,6 +123,7 @@ final class ServiceContainer {
 	 *
 	 * @param string $alias  Public alias/contract.
 	 * @param string $target Target service identifier.
+	 * @throws ContainerException When either identifier is invalid or unavailable.
 	 */
 	public function alias( string $alias, string $target ): void {
 		$this->assert_mutable();
@@ -139,6 +161,7 @@ final class ServiceContainer {
 	 *
 	 * @param string $id Service identifier.
 	 * @return mixed
+	 * @throws ContainerException When the identifier cannot be resolved safely.
 	 */
 	public function get( string $id ): mixed {
 		$this->assert_valid_id( $id );
@@ -194,6 +217,8 @@ final class ServiceContainer {
 
 	/**
 	 * Validate aliases and prevent any later definition changes.
+	 *
+	 * @throws ContainerException When an alias is circular or targets a missing definition.
 	 */
 	public function freeze(): void {
 		if ( $this->frozen ) {
@@ -224,6 +249,7 @@ final class ServiceContainer {
 	 * @param string  $id      Service identifier.
 	 * @param Closure $factory Explicit factory.
 	 * @param bool    $shared  Whether to cache one resolved value.
+	 * @throws ContainerException When the identifier is invalid or unavailable.
 	 */
 	private function register_factory( string $id, Closure $factory, bool $shared ): void {
 		$this->assert_mutable();
@@ -240,6 +266,7 @@ final class ServiceContainer {
 	 * Resolve an alias chain and detect alias cycles.
 	 *
 	 * @param string $id Service or alias identifier.
+	 * @throws ContainerException When an alias cycle is found.
 	 */
 	private function resolve_alias( string $id ): string {
 		$current = $id;
@@ -262,6 +289,8 @@ final class ServiceContainer {
 
 	/**
 	 * Reject definition changes after freeze.
+	 *
+	 * @throws ContainerException When the graph is frozen.
 	 */
 	private function assert_mutable(): void {
 		if ( $this->frozen ) {
@@ -273,6 +302,7 @@ final class ServiceContainer {
 	 * Validate an identifier and ensure it is unused.
 	 *
 	 * @param string $id Service identifier.
+	 * @throws ContainerException When the identifier is invalid or already registered.
 	 */
 	private function assert_available_id( string $id ): void {
 		$this->assert_valid_id( $id );
@@ -286,6 +316,7 @@ final class ServiceContainer {
 	 * Validate a service identifier.
 	 *
 	 * @param string $id Service identifier.
+	 * @throws ContainerException When the identifier is empty, padded, or contains control characters.
 	 */
 	private function assert_valid_id( string $id ): void {
 		if (
@@ -302,6 +333,7 @@ final class ServiceContainer {
 	 *
 	 * @param string $id    Requested identifier.
 	 * @param mixed  $value Resolved value.
+	 * @throws ContainerException When a typed identifier receives an incompatible value.
 	 */
 	private function assert_expected_type( string $id, mixed $value ): void {
 		if (

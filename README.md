@@ -2,7 +2,7 @@
 
 WP FormVault is a planned adapter-driven WordPress plugin for centralized form-submission indexing, reporting, scheduling, workflow, export, and secure delivery across supported form plugins.
 
-Current status: the guarded plugin entry file, foundation constants, internal namespace autoloader, compatibility profile, Composer lock, isolated dependency build, explicit service container, fail-closed composition root, planned module directories, enforceable module-boundary architecture, and engineering-quality/CI policy are implemented and verified. Production boot currently stops safely at the pending schema gate. PHPUnit, PHPCS, PHPStan, hosted CI, activation, database/migrations, product hook providers, queue APIs, adapters, and product features are not implemented yet.
+Current status: the guarded plugin entry file, foundation constants, internal namespace autoloader, compatibility profile, Composer lock, isolated dependency build, explicit service container, fail-closed composition root, planned module directories, enforceable module-boundary architecture, locked QA toolchain, WordPress test harness, and nine-lane GitHub Actions definitions are implemented and locally verified. Production boot currently stops safely at the pending schema gate. Activation, database/migrations, product hook providers, queue APIs, adapters, and product features are not implemented yet. No immutable hosted CI run is recorded in the repository.
 
 ## Architecture and policy verification
 
@@ -12,10 +12,19 @@ The accepted architecture uses `WPFormVault\Core\Plugin` as the sole composition
 php tools/verify-bootstrap.php
 php tools/verify-architecture.php
 php tools/verify-quality-policy.php
+php tools/verify-qa-tooling.php
 powershell -NoProfile -ExecutionPolicy Bypass -File tools/verify-task-graph.ps1
 ```
 
-The bootstrap verifier covers lazy/shared/transient services, aliases, duplicate/missing/circular/frozen failures, packaged dependency loading, gate order, safe diagnostics, hook idempotency, and site-graph isolation. The architecture verifier rejects outward/cyclic layer edges, undeclared modules, private cross-module imports, and container references outside the composition boundary. The quality-policy verifier enforces the WordPress coding rulesets, PHPStan level, no-baseline rule, test taxonomy, compatibility floors, and required blocking/informational CI lanes. It verifies policy, not the still-pending `QA-001` tool installation.
+The bootstrap verifier covers lazy/shared/transient services, aliases, duplicate/missing/circular/frozen failures, packaged dependency loading, gate order, safe diagnostics, hook idempotency, and site-graph isolation. The architecture verifier rejects outward/cyclic layer edges, undeclared modules, private cross-module imports, and container references outside the composition boundary. The quality-policy verifier enforces the stable WordPress coding rulesets, PHPStan level, no-baseline rule, test taxonomy, compatibility floors, and required blocking/informational CI lanes. The QA verifier separately checks the installed package locks, configurations, suite names, Docker prerequisites, and all nine workflow job identities.
+
+The complete fast quality gate is:
+
+```powershell
+composer run qa
+```
+
+WordPress-backed suites run through `tools/run-wordpress-integration-tests.sh` with an isolated database supplied through the documented `WPFV_TEST_DB_*` environment variables. GitHub Actions executes minimum/current MySQL and MariaDB, multisite, WordPress trunk, dependency-build, and release-candidate performance lanes.
 
 ## Dependency build
 

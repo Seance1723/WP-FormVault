@@ -35,7 +35,7 @@ foreach ( $files as $key => $path ) {
 }
 
 $required_fragments = array(
-	'plan' => array(
+	'plan'      => array(
 		'**Target platform:** WordPress 6.5+ / PHP 8.1+ (64-bit) / MySQL 5.7+ or MariaDB 10.4+',
 	),
 	'bootstrap' => array(
@@ -44,18 +44,18 @@ $required_fragments = array(
 		' * Requires PHP:      8.1',
 		"define( 'WPFV_MINIMUM_PHP_VERSION', '8.1' );",
 	),
-	'policy' => array(
+	'policy'    => array(
 		'woocommerce/action-scheduler: ~3.9.3',
 		'WordPress minimum: 6.5',
 		'PHP minimum: 8.1 on 64-bit architecture',
 		'Action Scheduler 4.0.0 is the current upstream release',
 	),
-	'memory' => array(
+	'memory'    => array(
 		'| WordPress | 6.5 | Required/frozen by user decision on 2026-07-27 |',
 		'| Action Scheduler | 3.9.3 | Required dependency baseline |',
 		'Version 3.9.3 remains intentionally pinned as the latest line compatible with the user-selected WordPress 6.5 floor.',
 	),
-	'tasks' => array(
+	'tasks'     => array(
 		'WordPress 6.5+, Action Scheduler 3.9.3, PHP 8.1+ on 64-bit',
 	),
 );
