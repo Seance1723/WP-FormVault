@@ -1,7 +1,7 @@
 # WP FormVault Task Register
 
-Last updated: 2026-07-27  
-Current stage: Database inventory and per-site migration-state design are complete; the migration runner is next (`DB-002`).
+Last updated: 2026-07-28
+Current stage: The target-zero per-site migration coordinator is complete (`DB-002`); submission-schema migration version 1 is ready (`DB-003`).
 
 ## Purpose
 
@@ -106,8 +106,8 @@ Never use “implemented as planned” as evidence.
 | ID | Submodule / task | State | Depends on | Notes / evidence |
 |---|---|---|---|---|
 | DB-001 | Finalize table inventory, columns, data types, application-level relations, and migration-state contract | `COMPLETE` | FND-001 | Verified 2026-07-27: accepted 34 per-site table suffixes, 402 typed columns, 55 application relations, 21 unique candidate keys, portable `LONGTEXT` JSON, UTC timestamps, stages 0–4, singleton schema state, and fenced hashed-token lease. `php tools/verify-database-schema-policy.php` passed; strict Composer validation passed; after the final PHP edit, pinned PHP 8.1 `composer run qa` passed 37/37 WPCS and PHPCompatibility files, PHPStan with no errors, and 2 PHPUnit tests/4 assertions. (`BUG-0018`, `BUG-0019`) |
-| DB-002 | Implement ordered, idempotent schema migration runner and schema version | `READY` | DB-001 | Implement control-plane bootstrap, fenced migration lease, state transitions, upgrade guard, and schema readiness gate from the accepted DB-001 contract. |
-| DB-003 | Create forms, fields, submissions, snapshots, and indexed values tables | `PLANNED` | DB-002 | Hybrid canonical JSON + selective EAV model. |
+| DB-002 | Implement ordered, idempotent schema migration runner and schema version | `COMPLETE` | DB-001 | Verified 2026-07-28: exact two-table control-plane bootstrap, contiguous target registry, fenced/hashed 120-second lease, optimistic state transitions, activation/ordinary checks, postconditions, stable failure codes, ready idempotency, and downgrade refusal are implemented. Pinned PHP 8.1 `composer qa` passed 59/59 files, PHPStan level 8, and 13 unit tests/29 assertions. WordPress 6.5 passed MySQL 5.7.44 single-site integration/security (11 tests/48 assertions), MySQL multisite integration/functional (11/47), and MariaDB 10.4.34 integration (10/46); bootstrap, architecture, foundation, database-policy, and task-graph verifiers passed. (`BUG-0020`-`BUG-0024`) |
+| DB-003 | Create forms, fields, submissions, snapshots, and indexed values tables | `READY` | DB-002 | Next numbered migration is version 1. Implement the frozen hybrid canonical JSON + selective EAV contract and exact postconditions without expanding into repositories or adapters. |
 | DB-004 | Create schedules, mappings, filters, recipients, reports, files, and delivery tables | `PLANNED` | DB-002 | Preserve intended period and idempotency key. |
 | DB-005 | Create workflow, notes, tags, saved views, notifications, automation, and audit tables | `PLANNED` | DB-002 | Include optimistic `row_version`. |
 | DB-006 | Create sync cursors/logs, jobs, locks, access grants, tokens, and download logs | `PLANNED` | DB-002 | Token table stores hashes only. |
@@ -431,4 +431,4 @@ No confirmed implementation blocker remains. The following choices stay within t
 
 ## Next executable task
 
-`DB-002` is the recommended `READY` task: implement the ordered migration runner, control-plane bootstrap, fenced per-site migration lease, and schema readiness gate from the completed DB-001 contract. `SEC-001`, `ADAPTER-001`, `LOG-001`, `EMAIL-001`, and `HEALTH-001` are also dependency-ready but remain sequenced after the database foundation unless the user reprioritizes them.
+`DB-003` is the recommended `READY` task: register migration version 1 and create the frozen forms, fields, submissions, canonical snapshots, and indexed-value tables with exact database postconditions. `SEC-001`, `ADAPTER-001`, `LOG-001`, `EMAIL-001`, and `HEALTH-001` are also dependency-ready but remain sequenced after the database foundation unless the user reprioritizes them.

@@ -1,7 +1,7 @@
 # WP FormVault Project Memory
 
-Last updated: 2026-07-27  
-Memory status: Current for the verified foundation scaffold, dependency baseline, implemented base container/bootstrap, enforced module architecture, implemented engineering-quality/CI toolchain, and accepted database/migration-state contract.
+Last updated: 2026-07-28
+Memory status: Current for the verified foundation, dependency baseline, base container/bootstrap, enforced module architecture, engineering-quality/CI toolchain, accepted database contract, and implemented target-zero schema coordinator.
 
 ## How to use this memory
 
@@ -57,7 +57,7 @@ Never:
 
 ## Current project state
 
-**Current:** The workspace contains the canonical plan/control documents, a verified WordPress plugin foundation, the implemented Composer dependency build/isolation layer, the explicit base service container, a fail-closed composition root, an enforceable module-boundary contract, the installed engineering-quality/test toolchain with GitHub Actions workflow definitions, and the accepted machine-readable database/migration-state design. The bootstrap loads the isolated dependency tree, registers the bundled Action Scheduler loader without early API calls, verifies runtime compatibility, and intentionally stops at the pending schema gate. No schema-dependent product hook registrar starts. The 34-table catalog is a design contract, not an installed schema: there is no activation lifecycle, database table/migration runtime, product queue integration, production ZIP, or release. The workflow files exist and are locally verified, but no immutable hosted GitHub Actions run is recorded in this workspace.
+**Current:** The workspace contains the canonical plan/control documents, verified WordPress foundation, isolated Composer dependency build, explicit base service container, fail-closed composition root, enforceable module-boundary contract, installed engineering-quality/test toolchain with GitHub Actions definitions, accepted machine-readable database design, and implemented target-zero per-site schema coordinator. Bootstrap loads the isolated dependency tree, registers Action Scheduler without early API calls, verifies runtime compatibility, then installs/verifies the two migration control tables and runs the fenced readiness gate. A healthy current site reaches schema version zero `ready`; missing, invalid, active, failed, background, or newer state blocks product startup. The other 32 catalog tables and numbered migrations 1-4 remain unimplemented, as do capability/site provisioning, product hook registrars, queue integration, production ZIP, and release. Workflow files are locally verified, but no immutable hosted GitHub Actions run is recorded.
 
 **Current completed controls:**
 
@@ -82,12 +82,14 @@ Never:
 - `.github/workflows/quality.yml`, `forward-compatibility.yml`, and `release-candidate-performance.yml` implement the nine policy lane IDs. `tools/verify-quality-policy.php` validates the stable contract; `tools/verify-qa-tooling.php` cross-checks the locked tools, configurations, suite names, Docker prerequisites, and workflow job identities.
 - `docs/architecture/database-schema-and-migration-state.md` and `database-schema-policy.json` freeze 34 per-site suffixes, 402 typed columns, 55 application relations, 21 unique candidate keys, schema stages 0–4, and the fail-closed per-site state/lease model; `tools/verify-database-schema-policy.php` enforces them.
 - Local QA evidence on 2026-07-27: WPCS and PHPCompatibilityWP passed 37 first-party PHP files; PHPStan level 8 reported no errors; PHPUnit unit tests passed; actionlint 1.7.12 accepted all workflows; WordPress 6.5 single-site integration/security and multisite integration/functional harnesses passed under PHP 8.1.34 and MySQL 5.7.44. This local evidence does not substitute for hosted lane evidence.
-- `tools/verify-foundation.php` passes in the local PHP 8.2.31 container.
+- `includes/Core/SchemaGate.php` composes the reviewed wpdb boundary, exact control-plane installer, contiguous migration registry, optimistic state store, 120-second lease manager, and bounded coordinator. Activation and ordinary `plugins_loaded` checks share the same runner; target zero performs no numbered domain migration.
+- Local DB-002 evidence on 2026-07-28: aggregate QA passed 59 first-party PHP files, PHPStan level 8 reported no errors, and 13 unit tests/29 assertions passed. WordPress 6.5 database suites passed on MySQL 5.7.44 (single-site integration/security 11 tests/48 assertions; multisite integration/functional 11 tests/47 assertions) and MariaDB 10.4.34 (integration 10 tests/46 assertions). This local evidence does not substitute for hosted lane evidence.
+- `tools/verify-foundation.php` passes in the repository-owned PHP 8.1 container.
 - `tools/verify-task-graph.ps1` validates all 198 tasks and 325 dependency edges with no missing references or cycles.
 
-**Current blockers:** None confirmed for `DB-002`. The production root's `blocked_schema` state is intentional until the migration runner replaces `PendingSchemaGate`; the completed DB-001 design is not evidence of installed tables or working migrations.
+**Current blockers:** None confirmed for `DB-003`. Only the two DB-002 control tables are runtime-installed; no numbered domain table exists yet.
 
-**Recommended next task:** `DB-002` — implement the control-plane bootstrap, ordered migration runner, fenced per-site migration lease, state transitions, version checks, and schema readiness gate.
+**Recommended next task:** `DB-003` - add migration version 1 for forms, fields, submissions, canonical snapshots, and indexed values using the completed coordinator.
 
 ## Project identity
 
@@ -114,7 +116,7 @@ The example table `wp_wpfv_submissions` means `$wpdb->prefix . 'wpfv_submissions
 | WordPress | 6.5 | Required/frozen by user decision on 2026-07-27 |
 | PHP | 8.1, 64-bit | Required/frozen; local PHP 8.1 QA passed and PHP 8.2–8.5 hosted lanes are configured |
 | MySQL | 5.7 | Required/frozen; WordPress 6.5 local minimum lane passed on MySQL 5.7.44 |
-| MariaDB | 10.4 | Required/frozen; minimum hosted lane configured, immutable hosted evidence pending |
+| MariaDB | 10.4 | Required/frozen; WordPress 6.5 local DB-002 integration passed on MariaDB 10.4.34; immutable hosted evidence pending |
 | Action Scheduler | 3.9.3 | Required dependency baseline |
 
 The WordPress minimum intentionally changed from the original 6.2 plan baseline so the bundled Action Scheduler 3.9.3 dependency is supported.
@@ -127,6 +129,7 @@ The WordPress minimum intentionally changed from the original 6.2 plan baseline 
 - The entry file delegates once to `WPFormVault\Core\Plugin`, which creates the request/site graph and runs fail-closed bootstrap gates.
 - `WPFormVault\Autoloader` maps namespace-relative class names into `/includes`, validates every namespace segment, ignores unrelated/unsafe names, and registers only once.
 - The bootstrap loads the isolated runtime autoloader and registers the unprefixed Action Scheduler arbitration loader early. It does not call Action Scheduler APIs; runtime queue integration remains `QUEUE-001`.
+- The real schema gate resolves table names from the active `$wpdb->prefix`, idempotently bootstraps `wpfv_schema_version` and `wpfv_locks`, and refuses product startup unless target/version/state/lease/postconditions are ready.
 - Module directories mirror the hardened plan: Core, Adapters, Sync, Submissions, Workflow, Reports, Scheduling, Email, Downloads, Privacy, Notifications, Audit, Rest, Health, and Admin, plus assets, languages, and templates.
 - The standalone verifier uses only non-production WordPress stubs and must not be loaded by WordPress.
 
@@ -143,23 +146,23 @@ The WordPress minimum intentionally changed from the original 6.2 plan baseline 
 - AccessScope remains a repository/query-layer concern; presentation and transport modules cannot construct SQL or bypass scope.
 - Container sharing is confined to one PHP request and current site. Multisite blog switches require a target-site graph and guaranteed restoration.
 - Module graph changes must update the architecture document and machine-readable graph and pass `php tools/verify-architecture.php`.
-- `tools/verify-bootstrap.php` proves gate order, dependency loading, sanitized diagnostics, constructor-injected substitutes, hook idempotency, container failure modes, and independent site graphs.
+- `tools/verify-bootstrap.php` proves gate order, dependency loading, sanitized diagnostics, constructor-injected substitutes, hook idempotency, container failure modes, and independent site graphs. Its production-like stub deliberately lacks `wpdb` and therefore must stop at `blocked_schema`; real WordPress database behavior is proven separately by integration tests.
 
 The accepted graph contains 15 modules and 63 explicitly allowed dependencies. Omitted edges are forbidden; being acyclic alone does not authorize a dependency.
 
 ## Database schema and migration-state baseline
 
-**Current accepted DB-001 design; runtime remains planned under DB-002 through DB-007:**
+**Current DB-001 contract with DB-002 control-plane runtime implemented; domain schema remains planned under DB-003 through DB-007:**
 
 - The authoritative catalog is `docs/architecture/database-schema-policy.json`; the human contract is `docs/architecture/database-schema-and-migration-state.md`.
 - Exactly 34 site-local tables resolve from `$wpdb->prefix . 'wpfv_' . $suffix`. Runtime code never hard-codes `wp_`, and rows do not duplicate a `site_id`.
 - The catalog contains 402 typed columns, 55 application-enforced relations, and 21 unique candidate keys. Database foreign keys are not part of the portable contract.
 - UTF-8 JSON uses application-validated `LONGTEXT`; runtime `DATETIME` values are UTC; nullable timestamps use SQL `NULL`; SHA-256 digests use `BINARY(32)`.
-- The two idempotently bootstrapped control tables are `wpfv_schema_version` and `wpfv_locks`. They do not advance the numbered domain schema.
+- The two idempotently bootstrapped control tables are `wpfv_schema_version` and `wpfv_locks`. DB-002 installs/verifies them through `dbDelta()` and exact metadata postconditions; they do not advance the numbered domain schema.
 - Planned numbered stages are version 1 submission index (`DB-003`), version 2 schedules/reports (`DB-004`), version 3 workflow/automation (`DB-005`), and version 4 operations/access (`DB-006`).
 - Schema versions are contiguous non-negative integers independent of plugin SemVer. Fresh install and upgrade use the same chain; the installed version advances only after postconditions pass; automatic downgrade is forbidden.
 - Per-site states are `uninitialized`, `pending`, `running`, `awaiting_background`, `failed`, `ready`, and `blocked_newer`. Schema-dependent work runs only when installed equals target, state is ready, and no active migration lease exists.
-- The `schema_migration` lease stores only an owner-token hash and uses expiry, heartbeat, and an incrementing fencing token so a stale worker cannot commit after takeover.
+- The `schema_migration` lease stores only a SHA-256 owner-token hash. Production duration is 120 seconds; acquisition is atomic, state writes require the unexpired owner hash/fence plus optimistic row version, and orderly release retains an expired row so subsequent fences remain monotonic.
 - Raw download tokens are never stored. Generated-file records contain opaque relative storage keys. IP/user-agent fields are nullable/privacy-gated, and report/audit relations declare anonymization behavior.
 - Critical uniqueness includes source submission identity, binary report/delivery/job idempotency keys, binary token hashes, lock keys, source cursors, and natural join/configuration keys.
 - `DB-007` owns final physical indexes and query-plan proof. DB-001 candidate keys are required inputs, not proof that indexes exist.
@@ -510,9 +513,9 @@ The current lock has seven runtime packages. Generic libraries are isolated unde
 
 `WPFormVault\Core\Plugin` is the sole composition root and `WPFormVault\Core\ServiceContainer` is the explicit, frozen, request/site-scoped container. Feature services use constructor injection and cannot resolve arbitrary services. The accepted 15-module graph permits only documented inward dependencies and public `Contracts`, `DTO`, `Events`, or `Value` surfaces; `Admin` and `Rest` remain terminal inbound modules. A machine-readable graph and source verifier enforce this architecture.
 
-### 2026-07-27 — Base runtime boot remains schema-gated
+### 2026-07-27 — Base runtime boot was schema-gated during FND-003
 
-The entry file now delegates to the idempotent composition root. It loads the locked isolated runtime, registers Action Scheduler for WordPress-wide arbitration without calling its APIs early, checks platform compatibility, and then stops at `blocked_schema` through `PendingSchemaGate`. This is intentionally fail closed: `DB-002` must replace the pending gate before any schema-dependent hook registrar can start. The container implementation is usable and verified independently with injected passing gates, but that test path is not a claim that the database or product services exist.
+At FND-003 completion, the entry file delegated to the idempotent composition root and intentionally stopped at `blocked_schema` through `PendingSchemaGate`. DB-002 subsequently superseded that temporary implementation with the real coordinator recorded below. This entry remains historical evidence and must not be used to describe current startup.
 
 ### 2026-07-27 — Quality toolchain and GitHub Actions matrix implemented
 
@@ -522,7 +525,13 @@ QA uses PHPUnit 9.6 for both pure unit and official WordPress 6.5–7.0 harness 
 
 DB-001 froze a 34-table, 402-column site-local catalog using the active `$wpdb->prefix`, application-enforced relations, portable `LONGTEXT` JSON, UTC runtime timestamps, raw binary hashes, and privacy-aware nullable/anonymization fields. The machine policy allocates domain schema stages 1–4 to DB-003 through DB-006 while reserving DB-002 for idempotent control-plane bootstrap and the runner.
 
-Schema versions are integers independent of plugin releases. Every site owns its singleton state and `schema_migration` lease; no network-global version can mask an unprovisioned site. The gate is ready only when committed and target versions match, state is `ready`, and no migration lease is active. Owner tokens remain hashed and acquisitions are fenced. Failed, active, background, and newer-than-code states all block schema-dependent work. This decision is verified as a design contract only; no runtime table currently exists.
+Schema versions are integers independent of plugin releases. Every site owns its singleton state and `schema_migration` lease; no network-global version can mask an unprovisioned site. The gate is ready only when committed and target versions match, state is `ready`, and no migration lease is active. Owner tokens remain hashed and acquisitions are fenced. Failed, active, background, and newer-than-code states all block schema-dependent work. At DB-001 completion this was design-only; DB-002 now implements the target-zero control-plane subset.
+
+### 2026-07-28 — Target-zero schema coordinator implemented
+
+DB-002 replaces `PendingSchemaGate` with a real current-site coordinator. It bootstraps and verifies the exact control tables before locking, derives its target from a contiguous registered chain, re-reads state after atomic lease acquisition, advances versions only after postconditions, refuses downgrades, and emits stable sanitized gate failures. Activation and ordinary `plugins_loaded` checks use the same bounded runner. The current empty registry targets version zero; DB-003 must register the first numbered migration.
+
+Production schema leases last 120 seconds. Raw owner tokens never leave memory. Orderly release retains the row as immediately expired history, so the next acquisition advances the fence and stale owners fail both hash/fence and optimistic-row checks. Failed-run retry expressions are evaluated before mutating state. Local disposable database verification uses private container networking rather than assuming an available host port (`BUG-0020`, `BUG-0021`, `BUG-0024`).
 
 ## Memory maintenance checklist
 

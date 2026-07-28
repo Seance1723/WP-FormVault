@@ -268,7 +268,7 @@ $production_second = Plugin::boot();
 wpfv_bootstrap_assert( $production_first === $production_second, 'production boot must return one request-local root' );
 wpfv_bootstrap_assert(
 	Plugin::STATE_BLOCKED_SCHEMA === $production_first->state(),
-	'production bootstrap must stop at the pending schema gate; got ' . $production_first->state()
+	'stubbed production bootstrap without wpdb must stop at the schema gate; got ' . $production_first->state()
 );
 wpfv_bootstrap_assert(
 	isset( $GLOBALS['wpfv_test_actions']['plugins_loaded'] )
@@ -290,8 +290,8 @@ call_user_func( $GLOBALS['wpfv_test_actions']['admin_notices'][0]['callback'] );
 $diagnostic_output = (string) ob_get_clean();
 
 wpfv_bootstrap_assert(
-	str_contains( $diagnostic_output, 'Database installation and migration support is not implemented yet.' ),
-	'blocked schema diagnostic must be actionable'
+	str_contains( $diagnostic_output, 'database connection is unavailable for schema verification' ),
+	'missing wpdb diagnostic must be actionable'
 );
 wpfv_bootstrap_assert(
 	! str_contains( $diagnostic_output, dirname( __DIR__ ) ),

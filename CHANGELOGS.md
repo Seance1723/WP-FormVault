@@ -49,6 +49,8 @@ All material project changes are recorded here. This file follows the spirit of 
 - Added the authoritative 34-table, 402-column portable database catalog with 55 application-level relations, 21 unique candidate keys, UTC/type profiles, privacy-safe storage rules, and staged ownership for schema versions 0–4. (`DB-001`)
 - Added the per-site schema singleton, fail-closed migration-state machine, fenced hashed-token lease, fresh-install/upgrade equivalence, failure/retry, downgrade refusal, multisite provisioning, and background-transform contracts. (`DB-001`)
 - Added a database-policy verifier to the aggregate QA gate; it detects unsafe prefixes, catalog/plan drift, invalid types or relations, missing security/idempotency keys, and non-contiguous schema stages. (`DB-001`)
+- Added the production target-zero schema coordinator: exact idempotent `wpfv_schema_version`/`wpfv_locks` bootstrap, contiguous migration registry, optimistic state store, 120-second hashed-owner fenced lease, activation/ordinary-load checks, postcondition verification, stable failure codes, and newer-schema refusal. (`DB-002`)
+- Added deterministic schema unit tests and WordPress-backed database tests for current-site naming, fresh convergence, ready-path idempotency, lifecycle hooks, serialized acquisition, monotonic fences, stale-owner rejection, retry counting, and downgrade refusal on MySQL 5.7 and MariaDB 10.4 in single-site/multisite modes. (`DB-002`)
 
 ### Changed
 
@@ -67,13 +69,16 @@ All material project changes are recorded here. This file follows the spirit of 
 - Advanced the engineering-quality policy from accepted-only to implemented tooling while retaining the release rule that workflow presence is not evidence of a successful hosted run. (`QA-001`)
 - Expanded the canonical plan and README with the accepted database schema/versioning contract while keeping runtime table/migration implementation explicitly assigned to `DB-002`–`DB-007`. (`DB-001`)
 
+- Advanced production bootstrap from the placeholder schema stop to a real fail-closed `SchemaGate`; a healthy WordPress database reaches schema version zero `ready`, while missing, active, failed, background, invalid, or newer schema state blocks product startup. (`DB-002`)
+- Defined orderly schema-lease release as retained, immediately expired history so every subsequent acquisition advances the persisted fence. (`DB-002`, `BUG-0020`)
+
 ### Deprecated
 
 - None.
 
 ### Removed
 
-- None.
+- Removed the temporary `PendingSchemaGate`; the production composition root now builds the real current-site database coordinator. (`DB-002`)
 
 ### Fixed
 
@@ -96,6 +101,11 @@ All material project changes are recorded here. This file follows the spirit of 
 - Corrected and guarded the lowercase `wordpress` machine key in the quality-policy verifier after automatic prose capitalization made implemented-state verification fail. (`ARCH-005`, `QA-001`, `BUG-0017`)
 - Routed authoritative DB-001 verification through the repository-owned PHP 8.1 image after the unsupported host Composer/PHP environment failed its configuration and extension preconditions. (`DB-001`, `QA-001`, `BUG-0018`)
 - Corrected the database-policy verifier's docblocks, comparisons, diagnostics, and alignment so the complete WordPress coding-standards gate passes. (`DB-001`, `BUG-0019`)
+- Corrected orderly lease release so fencing history cannot reset after reacquisition. (`BUG-0020`)
+- Corrected failed-run retry accounting so the previous `failed` state is evaluated before the transition mutates it. (`BUG-0021`)
+- Corrected the migration-registry version-gap unit test to assert the documented developer-configuration exception family. (`BUG-0022`)
+- Corrected DB-002 WordPress coding/static-analysis issues by narrowing the project-owned wpdb boundary and documenting reviewed dynamic identifiers. (`BUG-0023`)
+- Corrected local cross-engine verification to use a private disposable Docker network instead of assuming a free host port. (`BUG-0024`)
 
 ### Security
 

@@ -1,14 +1,14 @@
 # WP FormVault Service Container and Module Boundaries
 
 Owning task: `ARCH-004`  
-Status: Accepted architecture contract; base container/bootstrap implemented by `FND-003`, schema/product providers remain in their owning tasks
+Status: Accepted architecture contract; base container/bootstrap implemented by `FND-003`, schema coordinator implemented by `DB-002`, product providers remain in their owning tasks
 Machine-readable graph: [`module-boundaries.json`](./module-boundaries.json)
 
 ## Scope and evidence boundary
 
-This document defines how WP FormVault composes services and which modules may depend on which other modules. The base container, dependency loader, compatibility/schema gates, safe diagnostics, and composition root now exist. This document is not evidence that migrations, schema-dependent product registrars, or feature modules exist.
+This document defines how WP FormVault composes services and which modules may depend on which other modules. The base container, dependency loader, compatibility/schema gates, bounded control-plane migration coordinator, safe diagnostics, and composition root now exist. This document is not evidence that domain-table migrations, schema-dependent product registrars, or feature modules exist.
 
-`FND-003` owns the base runtime implementation. Later module tasks own their services. `tools/verify-architecture.php` verifies the graph and current source imports; `tools/verify-bootstrap.php` verifies the container and fail-closed root. Feature behavior remains subject to tests attached to its implementing task.
+`FND-003` owns the base runtime implementation and `DB-002` owns the schema coordinator. Later module tasks own their services and numbered domain migrations. `tools/verify-architecture.php` verifies the graph and current source imports; `tools/verify-bootstrap.php` verifies the container and fail-closed root; WordPress integration tests verify the real current-site database path. Feature behavior remains subject to tests attached to its implementing task.
 
 ## Architectural goals
 
@@ -188,7 +188,7 @@ Runtime container verification requires:
 - constructor-injected substitutes in unit tests;
 - safe multisite site-context isolation.
 
-`tools/verify-bootstrap.php` supplies the current `FND-003` evidence. Production boot intentionally reaches `blocked_schema` after dependency and compatibility success because `DB-002` has not implemented the versioned schema gate yet. No product hook registrar is configured in that state.
+`tools/verify-bootstrap.php` supplies the current `FND-003` evidence and deliberately omits a `wpdb` instance, so its production-like path must fail closed at `blocked_schema` with a sanitized database-unavailable diagnostic. The real WordPress/MySQL integration harness supplies `wpdb`; there the `DB-002` coordinator installs or verifies the current site's control plane, reaches schema version zero `ready`, and permits the otherwise-empty composition root to reach `ready`. Domain-dependent product registrars remain absent until their owning tasks.
 
 ## Change control
 

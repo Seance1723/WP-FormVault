@@ -148,8 +148,10 @@ final class Plugin {
 		$container          = new ServiceContainer( $site_id );
 		$diagnostics        = new WordPressDiagnosticSink();
 		$compatibility_gate = CompatibilityGate::from_runtime();
-		$schema_gate        = new PendingSchemaGate();
+		$schema_gate        = SchemaGate::from_runtime( $diagnostics );
 		$dependency_status  = DependencyLoader::load( WPFV_PLUGIN_DIR );
+
+		$schema_gate->register_hooks();
 
 		$container->set( DiagnosticSinkInterface::class, $diagnostics );
 		$container->set( 'wpfv.core.site_id', $site_id );

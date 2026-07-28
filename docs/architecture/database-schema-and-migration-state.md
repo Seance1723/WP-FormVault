@@ -1,14 +1,14 @@
 # WP FormVault Database Schema and Migration-State Contract
 
-Status: Accepted design for `DB-001`  
+Status: Accepted design for `DB-001`; control-plane runtime implemented by `DB-002`
 Machine-readable authority: [`database-schema-policy.json`](./database-schema-policy.json)  
-Runtime implementation owner: `DB-002` through `DB-007`
+Runtime implementation owners: control plane and runner `DB-002`; numbered domain schema `DB-003` through `DB-007`
 
 ## Scope and current truth
 
-This document freezes the database inventory, portable column types, application-level relations, schema sequence, and per-site migration-state model that later database tasks must implement.
+This document freezes the database inventory, portable column types, application-level relations, schema sequence, and per-site migration-state model.
 
-`DB-001` is a design task. No WP FormVault table or migration runner exists in production code at this point. The numbered migrations listed below are reserved contracts, not proof that the corresponding table groups have been installed.
+`DB-002` now implements the exact `wpfv_schema_version` and `wpfv_locks` tables, target-zero registry/coordinator, activation and ordinary-load checks, fenced state transitions, and fail-closed schema gate. The numbered migrations listed below remain reserved contracts and are not proof that domain table groups have been installed.
 
 ## Physical naming and site isolation
 
@@ -146,7 +146,7 @@ The `wpfv_locks` row whose `lock_key` is `schema_migration` is a fenced lease:
 6. On failure, leave `installed_version` at the last completed step, set state `failed`, store a stable redacted error code/timestamp, and release the owned lease. An abandoned lease becomes reclaimable only after expiry.
 7. A retry reruns the idempotent step and its pre/postconditions. It does not assume transactional rollback of DDL.
 
-The exact lease duration and heartbeat interval are runtime constants chosen and tested in `DB-002`; the invariant is that the interval is shorter than the lease and that expiry/reclaim behavior is deterministic.
+Production leases last 120 seconds. The implementation accepts only 30-3600 seconds through its explicit test/configuration seam and heartbeats immediately before and after every numbered foreground step. Release retains the row, clears its metadata, marks it released, and expires it at the current UTC instant; the next atomic acquisition therefore increments the existing fencing token instead of resetting it. Expiry/reclaim behavior is deterministic and every state write checks owner hash, fence, optimistic `row_version`, and unexpired ownership.
 
 ## Migration execution contract
 
@@ -171,9 +171,9 @@ php tools/verify-database-schema-policy.php
 
 The verifier rejects invalid JSON, missing/extra table suffixes, unsafe physical naming, native JSON dependence, unknown type profiles, duplicate/missing columns, invalid primary/unique keys, broken relations, invalid deletion policies, non-UTC runtime timestamps, a non-contiguous migration sequence, missing security/idempotency keys, or drift from the canonical plan.
 
-Downstream tasks must add runtime and database-backed tests:
+Runtime and downstream database-backed test ownership:
 
-- `DB-002`: bootstrap races, fenced lease acquisition/expiry/reclaim, state transitions, activation and version-bump checks, newer-schema blocking;
+- `DB-002` (implemented): exact bootstrap postconditions, fresh target-zero convergence, ready-path idempotency, activation/ordinary hook registration, lease serialization, monotonic release/reacquisition fences, stale-owner rejection, failed-run retry counting, current-site prefixes in single-site/multisite, and newer-schema blocking on MySQL 5.7 and MariaDB 10.4;
 - `DB-003`–`DB-006`: fresh creation and upgrade from every prior version on MySQL and MariaDB, single site and multisite;
 - `DB-007`: physical indexes and representative `EXPLAIN` plans;
 - `DB-009`: background-transform resumption and fail-closed report generation;

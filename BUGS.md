@@ -1,6 +1,6 @@
 # WP FormVault Bug Register
 
-Last updated: 2026-07-27
+Last updated: 2026-07-28
 
 ## Purpose
 
@@ -44,6 +44,344 @@ This is the mandatory record for defects found during development, testing, depl
 ## Recent bugs
 
 Records are ordered by discovery recency. The `State` field is authoritative.
+
+### BUG-0024 - Local integration database assumed an available host port
+
+- **State:** CLOSED
+- **Severity:** S3 Low
+- **First seen:** 2026-07-28 15:41:00 UTC
+- **Last seen:** 2026-07-28 15:50:00 UTC
+- **Environment:** local Docker Desktop integration harness
+- **Affected version/commit:** unreleased working tree
+- **Affected modules/tasks:** `DB-002`, `QA-001`
+- **Reporter/owner:** Codex
+
+#### Observed behavior
+
+The first disposable MySQL 5.7 launch could not bind host port 3307 and exited before any test ran.
+
+#### Expected behavior
+
+Repository database verification must not depend on an arbitrarily selected host port being free.
+
+#### Reproduction steps
+
+1. Leave another local service bound to host port 3307.
+2. Start the disposable database with `--publish 3307:3306`.
+3. Observe Docker reject the bind.
+
+#### Evidence
+
+- Sanitized error: `Bind for 0.0.0.0:3307 failed: port is already allocated`.
+- Test name/result: no PHPUnit test started on the failed attempt.
+- Frequency: deterministic while the external port remained occupied.
+
+#### Impact and scope
+
+Only local verification was delayed. No repository data, WordPress data, or running project container was changed.
+
+#### Cause analysis
+
+- **Proximate cause:** The disposable database published a fixed host port.
+- **Root cause:** The ad hoc local verification command assumed a host networking resource instead of isolating both containers together.
+- **Contributing factors:** An unrelated local process already owned the port.
+- **Why existing controls missed it:** CI uses its own clean runner and service port, while this was the first local disposable DB-002 run.
+
+#### Resolution
+
+- **Fix:** Connect the PHP runner and disposable database through a private named Docker network without publishing a host port.
+- **Data repair:** Not required.
+- **Backward compatibility:** None; this changes only the local verification procedure.
+
+#### Recurrence prevention
+
+- New invariant/guard: disposable local database verification must prefer a private container network over a fixed host-port mapping.
+- Regression test: MySQL and MariaDB suites both ran through the private network.
+- Broader related tests: single-site, multisite, security, MySQL 5.7, and MariaDB 10.4 lanes passed.
+- Documentation/task/memory updates: operational lesson recorded in project memory and DB-002 evidence.
+- Monitoring/alert: Docker's non-zero launch exit remains the signal; tests must not be claimed when setup fails.
+
+#### Verification
+
+- Command/check: run the pinned PHP image and both database images on `wpfv-db002-test`, addressed by container name.
+- Result: MySQL and MariaDB harnesses connected without published ports; the disposable containers and network were removed afterward.
+- Verified by/date: Codex, 2026-07-28.
+
+#### Timeline
+
+- `2026-07-28 15:41 UTC` - Fixed host-port launch failed.
+- `2026-07-28 15:42 UTC` - Private-network retry connected successfully.
+- `2026-07-28 15:50 UTC` - Cross-engine verification completed and disposable resources were removed.
+
+### BUG-0023 - Initial DB-002 runtime did not satisfy locked static-quality rules
+
+- **State:** CLOSED
+- **Severity:** S3 Low
+- **First seen:** 2026-07-28 15:30:00 UTC
+- **Last seen:** 2026-07-28 15:45:00 UTC
+- **Environment:** pinned PHP 8.1 QA image, WPCS 3.4.1, PHPStan 2.2.6 level 8
+- **Affected version/commit:** unreleased working tree
+- **Affected modules/tasks:** `DB-002`
+- **Reporter/owner:** Codex
+
+#### Observed behavior
+
+The first coding-standards run rejected documentation, formatting, exception-flow, and reviewed SQL-boundary annotations. The first PHPStan run then reported 11 wpdb adapter type errors.
+
+#### Expected behavior
+
+All new runtime code must pass the locked aggregate QA gate with no warning or baseline.
+
+#### Reproduction steps
+
+1. Run `composer lint:phpcs` against the initial DB-002 source.
+2. Observe standards failures across the new database/migration classes.
+3. Run `composer analyse`.
+4. Observe missing WordPress constant/type narrowing, dynamic reviewed-query, and `wpdb::query()` return-union errors.
+
+#### Evidence
+
+- Sanitized error: PHPCS reported multiple errors/warnings; PHPStan reported 11 errors in `WordPressSchemaDatabase`.
+- Test name/result: unit tests passed after their separate assertion correction, but aggregate QA remained blocked.
+- Frequency: every run against the initial source.
+
+#### Impact and scope
+
+The unreleased implementation could not complete DB-002 or enter a release artifact. No runtime database was affected.
+
+#### Cause analysis
+
+- **Proximate cause:** New boundary code lacked the repository's exact docblocks, WordPress output-mode literals, defensive row typing, and narrow reviewed-query annotations.
+- **Root cause:** The initial implementation pass preceded feedback from the repository's locked high-strictness tools.
+- **Contributing factors:** WordPress stubs type `wpdb` more broadly than the runtime path and require literal output-mode strings for conditional return inference.
+- **Why existing controls missed it:** The errors were found by the intended controls on their first run.
+
+#### Resolution
+
+- **Fix:** Apply scoped mechanical formatting, add precise throw contracts, use `'ARRAY_A'` literals, narrow the `wpdb::query()` result, validate metadata rows, and document the single allow-list-reviewed dynamic prepare boundary.
+- **Data repair:** Not required.
+- **Backward compatibility:** None; runtime behavior remains fail closed.
+
+#### Recurrence prevention
+
+- New invariant/guard: wpdb adapters must expose narrow project-owned return types and document every dynamic identifier boundary.
+- Regression test: the full `composer qa` gate runs PHPCS, PHPCompatibilityWP, PHPStan level 8, and unit tests.
+- Broader related tests: bootstrap, architecture, foundation, and real database suites also passed.
+- Documentation/task/memory updates: changelog, bug register, task evidence, and memory updated.
+- Monitoring/alert: any PHPCS warning or PHPStan finding fails aggregate QA.
+
+#### Verification
+
+- Command/check: pinned PHP 8.1 `composer qa`.
+- Result: 59/59 files passed both coding/compatibility scans, PHPStan reported no errors, and 13 unit tests/29 assertions passed.
+- Verified by/date: Codex, 2026-07-28.
+
+#### Timeline
+
+- `2026-07-28 15:30 UTC` - Initial PHPCS failures recorded.
+- `2026-07-28 15:35 UTC` - Initial PHPStan adapter failures recorded.
+- `2026-07-28 15:45 UTC` - Aggregate QA passed.
+
+### BUG-0022 - Migration-registry unit test expected the wrong exception family
+
+- **State:** CLOSED
+- **Severity:** S3 Low
+- **First seen:** 2026-07-28 15:27:00 UTC
+- **Last seen:** 2026-07-28 15:28:00 UTC
+- **Environment:** pinned PHP 8.1 image, PHPUnit 9.6.35
+- **Affected version/commit:** unreleased working tree
+- **Affected modules/tasks:** `DB-002`
+- **Reporter/owner:** Codex
+
+#### Observed behavior
+
+The first expanded unit run had one failure because the version-gap test expected `SchemaException`, while the registry correctly threw `InvalidArgumentException` for invalid developer configuration.
+
+#### Expected behavior
+
+The test must assert the registry's documented constructor contract and distinguish configuration errors from runtime schema failures.
+
+#### Reproduction steps
+
+1. Construct `MigrationRegistry` with a first migration from version 1.
+2. Expect `SchemaException`.
+3. Run the unit suite and observe the exception-type mismatch.
+
+#### Evidence
+
+- Sanitized error: expected `SchemaException`; actual `InvalidArgumentException` with a missing-version message.
+- Test name/result: `MigrationRegistryTest::test_registry_rejects_a_version_gap`, one failure in 13 tests.
+- Frequency: deterministic.
+
+#### Impact and scope
+
+Only the new test was incorrect. Production registry behavior already failed early as required.
+
+#### Cause analysis
+
+- **Proximate cause:** The test imported and expected the runtime exception type.
+- **Root cause:** The test was written from an assumed error taxonomy instead of the registry's documented constructor contract.
+- **Contributing factors:** Both exception families intentionally represent fail-fast paths at different boundaries.
+- **Why existing controls missed it:** This was the first execution of the new test.
+
+#### Resolution
+
+- **Fix:** Expect `InvalidArgumentException` for an invalid registered chain.
+- **Data repair:** Not required.
+- **Backward compatibility:** None.
+
+#### Recurrence prevention
+
+- New invariant/guard: tests for invalid dependency/configuration construction follow each constructor's declared exception contract.
+- Regression test: rerun the complete unit suite.
+- Broader related tests: aggregate QA and WordPress database suites passed.
+- Documentation/task/memory updates: defect and changelog recorded.
+- Monitoring/alert: PHPUnit exception mismatches fail the unit gate.
+
+#### Verification
+
+- Command/check: pinned PHP 8.1 `composer test:unit`.
+- Result: 13 tests and 29 assertions passed.
+- Verified by/date: Codex, 2026-07-28.
+
+#### Timeline
+
+- `2026-07-28 15:27 UTC` - Exception mismatch reproduced.
+- `2026-07-28 15:28 UTC` - Corrected unit suite passed.
+
+### BUG-0021 - Failed-run retry count was evaluated after changing state
+
+- **State:** CLOSED
+- **Severity:** S2 Medium
+- **First seen:** 2026-07-28 15:20:00 UTC
+- **Last seen:** 2026-07-28 15:48:00 UTC
+- **Environment:** unreleased DB-002 SQL review; MySQL 5.7 and MariaDB 10.4 verification
+- **Affected version/commit:** unreleased working tree
+- **Affected modules/tasks:** `DB-002`
+- **Reporter/owner:** Codex
+
+#### Observed behavior
+
+The initial `mark_pending` SET list changed `state` to `pending` before evaluating `IF(state = 'failed', retry_count + 1, retry_count)`, so left-to-right assignment evaluation would not count a failed-run retry.
+
+#### Expected behavior
+
+Moving from `failed` into a new owned attempt must increment `retry_count` exactly once.
+
+#### Reproduction steps
+
+1. Persist singleton state `failed` with retry count 2.
+2. Execute the initial SET order.
+3. Observe the retry expression evaluate the newly assigned `pending` state instead of the previous `failed` state.
+
+#### Evidence
+
+- Sanitized source evidence: `state = pending` preceded the conditional retry assignment.
+- Test name/result: `SchemaMigrationTest::test_failed_run_increments_retry_count_before_state_change`.
+- Frequency: every failed-to-pending transition with the initial statement.
+
+#### Impact and scope
+
+Failure telemetry and retry policy inputs would undercount repeated migration attempts. Installed schema versions and form data were not advanced or lost.
+
+#### Cause analysis
+
+- **Proximate cause:** Assignment order changed the value inspected by the retry expression.
+- **Root cause:** The transition query mixed prior-state inspection and state mutation without explicitly ordering the inspection first.
+- **Contributing factors:** The runner uses one atomic SET for all transition fields.
+- **Why existing controls missed it:** The defect was found during pre-test state-machine review before DB-002 existed in a release.
+
+#### Resolution
+
+- **Fix:** Evaluate and assign `retry_count` before assigning the new state.
+- **Data repair:** Not required; unreleased code had not run in production.
+- **Backward compatibility:** None.
+
+#### Recurrence prevention
+
+- New invariant/guard: SQL expressions that depend on pre-transition state must precede mutation of that state.
+- Regression test: start at failed/retry 2, mark pending, and require retry 3.
+- Broader related tests: the same test passed on MySQL 5.7 and MariaDB 10.4.
+- Documentation/task/memory updates: state-transition lesson and bug ID recorded.
+- Monitoring/alert: persisted retry count remains available for future health diagnostics.
+
+#### Verification
+
+- Command/check: WordPress 6.5 `required-minimum-mysql` and MariaDB 10.4 integration suites.
+- Result: failed-to-pending transition persisted retry count 3 on both engines.
+- Verified by/date: Codex, 2026-07-28.
+
+#### Timeline
+
+- `2026-07-28 15:20 UTC` - Incorrect SET order identified.
+- `2026-07-28 15:48 UTC` - Cross-engine regression verification passed.
+
+### BUG-0020 - Lease release reset fencing history
+
+- **State:** CLOSED
+- **Severity:** S2 Medium
+- **First seen:** 2026-07-28 15:18:00 UTC
+- **Last seen:** 2026-07-28 15:48:00 UTC
+- **Environment:** unreleased DB-002 state-machine review; MySQL 5.7 and MariaDB 10.4 verification
+- **Affected version/commit:** unreleased working tree
+- **Affected modules/tasks:** `DB-002`
+- **Reporter/owner:** Codex
+
+#### Observed behavior
+
+The initial release operation deleted the `schema_migration` row. A later acquisition inserted a new row with fencing token 1 instead of advancing the previous fence.
+
+#### Expected behavior
+
+Every successful acquisition for a site's migration lock must produce a fencing token greater than all earlier acquisitions, including after an orderly release.
+
+#### Reproduction steps
+
+1. Acquire a fresh schema lease and observe fence 1.
+2. Release it using the initial DELETE implementation.
+3. Acquire again and observe a new insert with fence 1.
+
+#### Evidence
+
+- Sanitized source evidence: release used `DELETE FROM ... WHERE lock_key/hash/fence`; acquisition inserts fence 1 when no row exists.
+- Test name/result: `SchemaMigrationTest::test_lease_serialization_and_monotonic_fencing`.
+- Frequency: every orderly release followed by acquisition.
+
+#### Impact and scope
+
+The monotonic fencing contract was broken and future downstream consumers that rely on fence ordering could accept an ambiguous fence. Owner-hash checks still reduced immediate state-store risk; no released or production data was affected.
+
+#### Cause analysis
+
+- **Proximate cause:** Releasing ownership deleted the persisted fence counter.
+- **Root cause:** Lease cleanup was modeled as row cleanup instead of ownership expiry with retained concurrency history.
+- **Contributing factors:** The lock table combines current ownership and fencing sequence in one row.
+- **Why existing controls missed it:** The implementation was still in its first correctness pass and had not yet reached concurrency tests.
+
+#### Resolution
+
+- **Fix:** Release now compares owner hash/fence, marks the row `released`, clears metadata, and expires it at the current UTC time. Atomic takeover increments the retained fence.
+- **Data repair:** Not required; unreleased code had not run in production.
+- **Backward compatibility:** The control-table contract already permits expired lock rows.
+
+#### Recurrence prevention
+
+- New invariant/guard: orderly release never deletes the fencing history.
+- Regression test: require first acquisition fence 1, reject a concurrent acquire, release, reacquire, and require fence 2.
+- Broader related tests: stale-owner state mutation is rejected and both database engines pass.
+- Documentation/task/memory updates: lease contract, changelog, task evidence, and memory updated.
+- Monitoring/alert: lease/state failures return stable sanitized gate codes.
+
+#### Verification
+
+- Command/check: WordPress 6.5 integration suites on MySQL 5.7 and MariaDB 10.4.
+- Result: serialized acquisition, inactive release, monotonic reacquisition, hashed owner storage, and stale-owner rejection passed.
+- Verified by/date: Codex, 2026-07-28.
+
+#### Timeline
+
+- `2026-07-28 15:18 UTC` - Fencing reset identified during review.
+- `2026-07-28 15:48 UTC` - Cross-engine lease regressions passed.
 
 ### BUG-0019 — Initial database-policy verifier violated project coding standards
 
